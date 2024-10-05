@@ -1,0 +1,151 @@
+openapi: 3.0.0
+info:
+  title: Auth API
+  version: 1.0.0
+  description: API для аутентификации пользователей
+
+paths:
+  /register:
+    post:
+      summary: Регистрация пользователя
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  minLength: 5
+                  maxLength: 64
+                  example: "john_doe"
+                displayName:
+                  minLength: 5
+                  maxLength: 64
+                  type: string
+                  example: "John Doe"
+                rawPassword:
+                  type: string
+              required:
+                - username
+                - rawPassword
+                - displayName
+              additionalProperties: false
+      responses:
+        '200':
+          description: Успешная регистрация
+        '400':
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  usernameError:
+                    type: string
+                    example: "Такое имя пользователя уже занято"
+                required:
+                  - usernameError
+
+  /signin:
+    post:
+      summary: Вход в систему
+      operationId: signInUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  minLength: 5
+                  maxLength: 64
+                  example: "john_doe"
+                rawPassword:
+                  type: string
+              required:
+                - username
+                - rawPassword
+              additionalProperties: false
+      responses:
+        '200':
+          description: Успешный вход
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  username:
+                    type: string
+                    example: "john_doe"
+                  displayName:
+                    type: string
+                    example: "John Doe"
+                  accessToken:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  refreshToken:
+                    type: string
+                    example: "def50200..."
+                required:
+                  - username
+                  - displayName
+                  - accessToken
+                  - refreshToken
+                additionalProperties: false
+
+        '401':
+          description: Неверные учетные данные
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errorMessage:
+                    type: string
+                    example: "Ошибка авторизации"
+                  username:
+                    type: string
+                    example: "john_doe"
+                required:
+                  - errorMessage
+                  - username
+                additionalProperties: false
+
+  /refresh-token:
+    post:
+      summary: Обновить токен доступа
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  type: string
+                  example: "def50200..."
+              required:
+                - refreshToken
+              additionalProperties: false
+      responses:
+        '200':
+          description: Успешное обновление токена
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                required:
+                  - accessToken
+                additionalProperties: false
+        '401':
+          description: Неверный токен обновления
