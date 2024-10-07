@@ -1,0 +1,183 @@
+openapi: 3.0.0
+info:
+  title: Image Gallery API
+  version: 1.0.0
+  description: API для работы с изображениями
+
+paths:
+  /search-images:
+    post:
+      summary: Поиск изображений по текстовому запросу
+      operationId: searchImages
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                query:
+                  type: string
+                  description: Текстовый запрос для поиска изображений
+                  maxLength: 4096
+                  example: "природа"
+                coefficients:
+                  type: object
+                  description: Коэффициенты для ранжирования изображений
+                  properties:
+                    semantic:
+                      type: number
+                      format: double
+                      description: Семантический параметр
+                      minimum: 0
+                      maximum: 1
+                    text:
+                      type: number
+                      format: double
+                      description: Параметр для распознанного текста на изображении
+                      minimum: 0
+                      maximum: 1
+                    description:
+                      type: number
+                      format: double
+                      description: Параметр для текстового описания изображения
+                      minimum: 0
+                      maximum: 1
+                    faces:
+                      type: number
+                      format: double
+                      description: Параметр для распознанных лиц
+                      minimum: 0
+                      maximum: 1
+                  example:
+                    semantic: 0.4
+                    text: 0.3
+                    description: 0.2
+                    faces: 0.1
+                  required: false
+                limit:
+                  type: integer
+                  description: Количество изображений для выборки
+                  minimum: 1
+                  maximum: 30
+                  default: 10
+              required:
+                - query
+                - coefficients
+                - limit
+
+              additionalProperties: false
+      responses:
+        '200':
+          description: Успешный поиск
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    imageUrl:
+                      type: string
+                      description: Ссылка на изображение
+                    scores:
+                      type: object
+                      properties:
+                        semantic:
+                          type: number
+                          description: Семантический параметр
+                        text:
+                          type: number
+                          description: Оценка распознанного текста
+                        description:
+                          type: number
+                          description: Оценка текстового описания
+                        faces:
+                          type: number
+                          description: Оценка распознанных лиц
+                      required:
+                        - semantic
+                        - text
+                        - description
+                        - faces
+                  required:
+                  - imageUrl
+                  - scores
+
+        '400':
+          description: Ошибка валидации
+        '404':
+          description: Галерея пуста
+
+  /delete-image:
+    post:
+      summary: Удаление изображения
+      operationId: deleteImage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                imageId:
+                  type: string
+                  description: Идентификатор изображения для удаления
+              required:
+                - imageId
+              additionalProperties: false
+      responses:
+        '200':
+          description: Успешное удаление
+        '400':
+          description: Ошибка удаления (например, блокировка файла)
+
+  /add-image:
+    post:
+      summary: Добавление изображения
+      operationId: addImage
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                  description: Изображение для загрузки
+                description:
+                  type: string
+                  description: Описание изображения
+                  example: "Это фотография горы."
+              required:
+                - image
+              additionalProperties: false
+      responses:
+        '200':
+          description: Успешное добавление
+        '400':
+          description: Ошибка загрузки изображения
+
+  /get-images:
+    get:
+      summary: Получение изображений из галереи
+      operationId: getImages
+      responses:
+        '200':
+          description: Успешная загрузка изображений
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    imageUrl:
+                      type: string
+                      description: Ссылка на изображение
+                  required:
+                    - imageUrl
+        '400':
+          description: Ошибка загрузки галереи (например, проблемы с сетью или файлом)
