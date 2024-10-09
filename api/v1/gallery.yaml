@@ -4,6 +4,66 @@ info:
   version: 1.0.0
   description: API для работы с изображениями
 
+
+components:
+  schemas:
+    GalleryDto:
+      type: object
+      properties:
+        galleryId:
+          type: integer
+          format: int64
+        galleryName:
+          type: string
+        preview:
+          type: array
+          items:
+            type: integer
+            format: int64
+
+    GetGalleriesResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/GalleryDto'
+
+    CreateGalleryRequest:
+      type: object
+      properties:
+        galleryName:
+          type: string
+          description: Уникальное название галереи (обязательно должно содержать хотя бы один символ)
+      required:
+        - galleryName
+
+    CreateGalleryResponse:
+      type: object
+      properties:
+        galleryId:
+          type: integer
+          format: int64
+        galleryName:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            type: string
+      example:
+        message: "Ошибка создания галереи"
+        details:
+          - "Название галереи уже существует"
+          - "Название галереи не может быть пустым"
+
+
+
 paths:
   /search-images:
     post:
@@ -101,8 +161,8 @@ paths:
                         - description
                         - faces
                   required:
-                  - imageUrl
-                  - scores
+                    - imageUrl
+                    - scores
 
         '400':
           description: Ошибка валидации
@@ -181,3 +241,95 @@ paths:
                     - imageUrl
         '400':
           description: Ошибка загрузки галереи (например, проблемы с сетью или файлом)
+  /galleries:
+    post:
+      summary: Создание новой галереи
+      description: |
+        Пользователь создаёт галерею, указав уникальное имя. Название должно содержать хотя бы один символ.
+        Если создание успешно, новая галерея отображается в списке на главном экране.
+        В случае ошибки создания галереи информация о проблеме отображается пользователю и записывается в системный лог.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGalleryRequest'
+      responses:
+        '200':
+          description: Галерея успешно создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateGalleryResponse'
+          headers:
+            X-System-Log:
+              description: Сообщение о записи успешного события в системный лог
+              schema:
+                type: string
+                example: "Gallery creation event logged successfully"
+        '400':
+          description: Некорректный запрос. Ошибка валидации (например, название галереи уже существует или пустое).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          headers:
+            X-System-Log:
+              description: Сообщение о записи ошибки в системный лог
+              schema:
+                type: string
+                example: "Gallery creation error logged"
+
+  /galleries/{galleryId}:
+    delete:
+      summary: Удаление галереи
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: galleryId
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Галерея успешно удалена
+
+  /galleries/{galleryId}/images:
+    get:
+      summary: Получение изображений из галереи
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: galleryId
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - in: query
+          name: size
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: offset
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Список изображений в галерее
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetGalleryImagesResponse'
+
+securitySchemes:
+  bearerAuth:
+    type: http
+    scheme: bearer
+    bearerFormat: JWT
