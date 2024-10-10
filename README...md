@@ -1,0 +1,1 @@
+Swagger-UI for api to work with galleries: <http://localhost:8080/api/gallery>
