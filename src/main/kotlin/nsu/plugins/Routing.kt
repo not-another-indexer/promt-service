@@ -8,8 +8,8 @@ import io.ktor.server.routing.*
 
 fun Application.configureRouting() {
     routing {
-        get("/") {
-            call.respondText("Hello World!")
+        get("/ping") {
+            call.respondText("pong")
         }
 
         swaggerUI(path = "api/gallery", swaggerFile = "api/v1/gallery.yaml")
