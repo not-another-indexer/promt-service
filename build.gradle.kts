@@ -38,13 +38,14 @@ dependencies {
     // logback
     implementation("org.slf4j:slf4j-simple:${properties["slf4j_version"]}")
     implementation("io.github.oshai:kotlin-logging-jvm:${properties["kotlin_logging_version"]}")
-    // protobuf
+    // protobuf + grpc
     implementation("io.grpc:grpc-stub:${properties["grpc_java_version"]}")
-    implementation("io.grpc:grpc-kotlin-stub:${properties[properties["grpc_kotlin_version"]]}")
+    implementation("io.grpc:grpc-kotlin-stub:${properties["grpc_kotlin_version"]}")
     implementation("io.grpc:grpc-protobuf:${properties["grpc_java_version"]}")
     implementation("com.google.protobuf:protobuf-java:${properties["protobuf_version"]}")
     implementation("com.google.protobuf:protobuf-java-util:${properties["protobuf_version"]}")
     implementation("com.google.protobuf:protobuf-kotlin:${properties["protobuf_version"]}")
+    implementation("io.grpc:grpc-netty:${properties["grpc_java_version"]}")
     // exposed
     implementation("org.jetbrains.exposed:exposed-core:${properties["exposed_version"]}")
     implementation("org.jetbrains.exposed:exposed-crypt:${properties["exposed_version"]}")
@@ -55,6 +56,8 @@ dependencies {
 
     implementation("org.jetbrains.exposed:exposed-json:${properties["exposed_version"]}")
     implementation("org.jetbrains.exposed:exposed-money:${properties["exposed_version"]}")
+    // postgres
+    implementation("org.postgresql:postgresql:${properties["postgres_version"]}")
     // testing grpc
     testImplementation("io.grpc:grpc-testing:${properties["grpc_java_version"]}")
     // testing kotlin
@@ -94,10 +97,6 @@ protobuf {
         }
     }
     generatedFilesBaseDir = "$projectDir/src/generated"
-}
-
-java {
-    toolchain.languageVersion.set(JavaLanguageVersion.of(11))
 }
 
 tasks.withType<KotlinCompile>().all {
