@@ -5,6 +5,7 @@ service CloudberryStorage {
     rpc DestroyBucket (DestroyBucketRequest) returns (DestroyBucketResponse);
     rpc PutEntry (stream PutEntryRequest) returns (PutEntryResponse);
     rpc RemoveEntry (RemoveEntryRequest) returns (RemoveEntryResponse);
+    rpc Find (FindRequest) returns (FindResponse);
 }
 
 message InitBucketRequest {
@@ -14,6 +15,41 @@ message InitBucketRequest {
 message InitBucketResponse {
     string status_message = 1;
     bool success = 2;
+}
+
+message FindRequest {
+    string query = 1;
+    string bucket_uuid = 2;
+    repeated Coefficient parameters = 3;
+    int64 count = 4;
+}
+
+message FindResponse {
+    repeated FindResponseEntry entries = 1;
+}
+
+message FindResponseEntry {
+    string content_uuid = 1;
+    repeated Metric metrics = 2;
+}
+
+message Coefficient {
+    Parameter parameter = 1;
+    double value = 2;
+}
+
+message Metric {
+    Parameter parameter = 1;
+    double value = 2;
+}
+
+enum Parameter {
+    SEMANTIC_ONE_PEACE_SIMILARITY = 0;
+    RECOGNIZED_TEXT_SIMILARITY = 1;
+    TEXTUAL_DESCRIPTION_SIMILARITY = 2;
+    RECOGNIZED_FACE_SIMILARITY = 3;
+    RECOGNIZED_TEXT_BM25_RANK = 4;
+    TEXTUAL_DESCRIPTION_BM25_RANK = 5;
 }
 
 message DestroyBucketRequest {
@@ -26,8 +62,10 @@ message DestroyBucketResponse {
 }
 
 message ContentMetadata {
-    string content_id = 1;
-    string extension = 2;
+    string content_uuid = 1;
+    string bucket_uuid = 2;
+    string extension = 3;
+    string description = 4;
 }
 
 message PutEntryRequest {
@@ -43,7 +81,8 @@ message PutEntryResponse {
 }
 
 message RemoveEntryRequest {
-    string content_id = 1;
+    string content_uuid = 1;
+    string bucket_uuid = 2;
 }
 
 message RemoveEntryResponse {
