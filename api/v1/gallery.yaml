@@ -11,15 +11,13 @@ components:
       type: object
       properties:
         galleryId:
-          type: integer
-          format: int64
+          type: string
         galleryName:
           type: string
         preview:
           type: array
           items:
-            type: integer
-            format: int64
+            type: string
 
     GetGalleriesResponse:
       type: object
@@ -42,8 +40,7 @@ components:
       type: object
       properties:
         galleryId:
-          type: integer
-          format: int64
+          type: string
         galleryName:
           type: string
 
@@ -249,7 +246,7 @@ paths:
         Если создание успешно, новая галерея отображается в списке на главном экране.
         В случае ошибки создания галереи информация о проблеме отображается пользователю и записывается в системный лог.
       security:
-        - bearerAuth: []
+        - bearerAuth: [ ]
       requestBody:
         required: true
         content:
@@ -281,19 +278,39 @@ paths:
               schema:
                 type: string
                 example: "Gallery creation error logged"
+    get:
+      summary: Получение доступных пользователю галерей
+      responses:
+        '200':
+          description: Галереи пользователя получены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetGalleriesResponse'
+        '400':
+          description: Некорректный запрос.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          headers:
+            X-System-Log:
+              description: Сообщение о записи ошибки в системный лог
+              schema:
+                type: string
+                example: "Gallery creation error logged"
 
   /galleries/{galleryId}:
     delete:
       summary: Удаление галереи
       security:
-        - bearerAuth: []
+        - bearerAuth: [ ]
       parameters:
         - in: path
           name: galleryId
           required: true
           schema:
-            type: integer
-            format: int64
+            type: string
       responses:
         '200':
           description: Галерея успешно удалена
@@ -302,7 +319,7 @@ paths:
     get:
       summary: Получение изображений из галереи
       security:
-        - bearerAuth: []
+        - bearerAuth: [ ]
       parameters:
         - in: path
           name: galleryId

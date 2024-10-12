@@ -23,8 +23,18 @@ class GetGalleries(
 ) {
     fun execute(): Map<Gallery, List<Uuid>> {
         Database.connect(getNewConnection)
+        /*transaction {
+            SchemaUtils.create(Images)
+            SchemaUtils.create(Galleries)
+            SchemaUtils.create(Users)
+            Users.insert {
+                it[id] = 0
+                it[username] = "username"
+                it[displayName] = "displayName"
+            }
+        }*/
 
-        val galleries: List<Gallery> = transaction {
+        return transaction {
             addLogger(StdOutSqlLogger)
 
             Galleries.selectAll()
@@ -34,14 +44,12 @@ class GetGalleries(
                         id = gallery[Galleries.id].toKotlinUuid(),
                         name = gallery[Galleries.name]
                     )
-                }
+                }.map { gallery ->
+                    gallery to Images.selectAll()
+                        .where { Images.galleryUuid eq gallery.id.toJavaUuid() }
+                        .limit(4)
+                        .map { image -> image[Images.id].toKotlinUuid() }
+                }.toMap()
         }
-
-        return galleries.map { gallery ->
-            gallery to Images.selectAll()
-                .where { Images.galleryUuid eq gallery.id.toJavaUuid() }
-                .limit(4)
-                .map { image -> image[Images.id].toKotlinUuid() }
-        }.toMap()
     }
 }
