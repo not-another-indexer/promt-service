@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+message RegisterRequest {
+  string username = 1;
+  string displayName = 2;
+  string rawPassword = 3;
+}
+
+message RegisterResponse {
+  string status_message = 1;
+  bool success = 2;
+}
+
+message SignInRequest {
+  string username = 1;
+  string rawPassword = 2;
+}
+
+message SignInResponse {
+  string username = 1;
+  string displayName = 2;
+  string accessToken = 3;
+  string refreshToken = 4;
+}
+
+message RefreshTokenRequest {
+  string refreshToken = 1;
+}
+
+message RefreshTokenResponse {
+  string accessToken = 1;
+}
+
+service AuthService {
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  rpc SignIn(SignInRequest) returns (SignInResponse);
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+}

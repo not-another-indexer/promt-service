@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalUuidApi::class)
 
-package nsu.nai.usecase
+package nsu.nai.usecase.gallery
 
 import nsu.nai.core.table.image.Image
 import nsu.nai.core.table.image.Images

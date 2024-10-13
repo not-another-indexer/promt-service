@@ -1,47 +1,43 @@
 @file:OptIn(ExperimentalUuidApi::class)
 
-package nsu.nai.usecase
+package nsu.nai.usecase.gallery
 
 import io.github.oshai.kotlinlogging.KotlinLogging.logger
 import nsu.client.CloudberryStorageClient
 import nsu.nai.core.table.gallery.Galleries
-import nsu.nai.core.table.gallery.Gallery
+import nsu.nai.core.table.image.Images
 import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.StdOutSqlLogger
 import org.jetbrains.exposed.sql.addLogger
-import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.sql.Connection
 import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.toKotlinUuid
+import kotlin.uuid.Uuid
+import kotlin.uuid.toJavaUuid
 
-class CreateGallery(
-    private val userIdentifier: Long,
-    private val galleryName: String,
+class RemoveGallery(
+    private val galleryIdentifier: Uuid,
     //
     private val getNewConnection: () -> Connection,
     private val cloudberry: CloudberryStorageClient
 ) {
     private val logger = logger {}
 
-    suspend fun execute(): Gallery {
+    suspend fun execute() {
         Database.connect(getNewConnection)
 
-        val newGalleryId = transaction {
+        transaction {
             addLogger(StdOutSqlLogger)
 
-            Galleries.insert {
-                it[name] = galleryName
-                it[userId] = userIdentifier
-            } get Galleries.id
+            Images.deleteWhere { galleryUuid eq galleryIdentifier.toJavaUuid() }
+            Galleries.deleteWhere { id eq galleryIdentifier.toJavaUuid() }
         }
 
-        val response = cloudberry.initBucket(newGalleryId.toKotlinUuid())
+        val response = cloudberry.destroyBucket(galleryIdentifier)
         if (!response.success) {
-            logger.error { "bucket init failed with message ${response.statusMessage}" }
-            throw IllegalStateException()
+            logger.error { "bucket destroy failed with message ${response.statusMessage}" }
         }
-
-        return Gallery(newGalleryId.toKotlinUuid(), galleryName)
     }
 }

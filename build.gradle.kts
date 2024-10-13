@@ -5,7 +5,6 @@ plugins {
     application
     kotlin("jvm") version "2.0.20"
     kotlin("plugin.serialization") version "1.4.21"
-    id("io.ktor.plugin") version "3.0.0-rc-2"
     id("com.google.protobuf") version "0.9.2"
 }
 
@@ -14,9 +13,6 @@ version = "0.0.1"
 
 application {
     mainClass.set("nsu.ApplicationKt")
-
-    val isDevelopment: Boolean = project.ext.has("development")
-    applicationDefaultJvmArgs = listOf("-Dio.ktor.development=$isDevelopment")
 }
 
 repositories {
@@ -26,15 +22,8 @@ repositories {
 dependencies {
     // kotlin
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
-    // ktor
-    implementation("io.ktor:ktor-server-core-jvm")
-    implementation("io.ktor:ktor-server-netty-jvm")
-    implementation("io.ktor:ktor-serialization-jvm")
-    implementation("io.ktor:ktor-server-content-negotiation")
-    implementation("io.ktor:ktor-serialization-kotlinx-json")
-    implementation("io.ktor:ktor-server-status-pages-jvm")
-    implementation("io.ktor:ktor-server-swagger")
-    testImplementation("io.ktor:ktor-server-test-host-jvm")
+    // jwt
+    implementation("com.auth0:java-jwt:4.0.0")
     // logback
     implementation("org.slf4j:slf4j-simple:${properties["slf4j_version"]}")
     implementation("io.github.oshai:kotlin-logging-jvm:${properties["kotlin_logging_version"]}")
