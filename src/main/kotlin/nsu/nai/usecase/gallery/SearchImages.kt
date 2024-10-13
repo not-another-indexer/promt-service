@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalUuidApi::class)
 
-package nsu.nai.usecase
+package nsu.nai.usecase.gallery
 
 import nsu.client.CloudberryStorageClient
 import nsu.nai.core.Parameter
@@ -45,7 +45,7 @@ class SearchImages(
             .where { id inList imagesUuids }
             .map { image ->
                 Image(
-                    id = image[Images.id].toKotlinUuid(),
+                    id = image[id].toKotlinUuid(),
                     galleryId = image[Images.galleryUuid].toKotlinUuid(),
                     description = image[Images.description]
                 )

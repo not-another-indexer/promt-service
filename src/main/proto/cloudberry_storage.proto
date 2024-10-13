@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package cloudberry;
+
 service CloudberryStorage {
     rpc InitBucket (InitBucketRequest) returns (InitBucketResponse);
     rpc DestroyBucket (DestroyBucketRequest) returns (DestroyBucketResponse);

@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalUuidApi::class)
 
-package nsu.nai.usecase
+package nsu.nai.usecase.gallery
 
 import io.github.oshai.kotlinlogging.KotlinLogging.logger
 import nsu.client.CloudberryStorageClient
@@ -24,7 +24,7 @@ class RemoveImage(
 ) {
     private val logger = logger {}
 
-    suspend fun execute() {
+    suspend fun execute() : Pair<String, Boolean> {
         Database.connect(getNewConnection)
 
         val galleryUuid = transaction {
@@ -38,8 +38,11 @@ class RemoveImage(
             bucketUuid = galleryUuid.toKotlinUuid()
         )
 
-        if (!response.success) {
+        return if (!response.success) {
             logger.error { "image removal failed with message ${response.statusMessage}" }
+            "image removal failed with message ${response.statusMessage}" to false
+        } else {
+            "image removal is success" to true
         }
     }
 }

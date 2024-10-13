@@ -1,0 +1,110 @@
+syntax = "proto3";
+
+package nai;
+
+message CreateGalleryRequest {
+  string galleryName = 1;
+}
+
+message CreateGalleryResponse {
+  string galleryId = 1;
+}
+
+message GalleryPreview {
+  string galleryId = 1;
+  string galleryName = 2;
+  repeated string preview = 3;
+}
+
+message GetGalleriesRequest {
+}
+
+message GetGalleriesResponse {
+  repeated GalleryPreview content = 1;
+}
+
+message DeleteGalleryRequest {
+  string galleryId = 1;
+}
+
+message DeleteGalleryResponse {
+  string status_message = 1;
+  bool success = 2;
+}
+
+message GetGalleryImagesRequest {
+  string galleryId = 1;
+  int32 size = 2;
+  int32 offset = 3;
+}
+
+message Image {
+  string imageId = 1;
+  string galleryId = 2;
+  string description = 3;
+}
+
+message GetGalleryImagesResponse {
+  repeated Image content = 1;
+  int64 total = 2;
+}
+
+message ContentMetadata {
+  string galleryId = 1;
+  string description = 2;
+  string extension = 3;
+}
+
+message AddImageRequest {
+  oneof payload {
+    ContentMetadata metadata = 1;
+    bytes chunk_data = 2;
+  }
+}
+
+message AddImageResponse {
+  string imageId = 1;
+}
+
+message DeleteImageRequest {
+  string imageId = 1;
+}
+
+message DeleteImageResponse {
+  string status_message = 1;
+  bool success = 2;
+}
+
+message GetImageContentRequest {
+  string imageId = 1;
+}
+
+message GetImageContentResponse {
+  bytes chunk_data = 1;
+}
+
+message SearchImageRequest {
+  string query = 1;
+  string galleryId = 2;
+  map<string, double> parameters = 3;
+  int64 count = 4;
+}
+
+message SearchImageResponse {
+  repeated Image content = 1;
+}
+
+// Services
+service MainService {
+  rpc CreateGallery(CreateGalleryRequest) returns (CreateGalleryResponse);
+  rpc GetGalleries(GetGalleriesRequest) returns (GetGalleriesResponse); // No request parameters
+  rpc DeleteGallery(DeleteGalleryRequest) returns (DeleteGalleryResponse);
+}
+
+service GalleryService {
+  rpc GetGalleryImages(GetGalleryImagesRequest) returns (GetGalleryImagesResponse);
+  rpc AddImage(stream AddImageRequest) returns (AddImageResponse);
+  rpc DeleteImage(DeleteImageRequest) returns (DeleteImageResponse);
+  rpc GetImageContent(GetImageContentRequest) returns (stream GetImageContentResponse);
+  rpc SearchImage(SearchImageRequest) returns (SearchImageResponse);
+}
