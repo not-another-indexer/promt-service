@@ -1,43 +1,47 @@
 @file:OptIn(ExperimentalUuidApi::class)
 
-package nsu.nai.usecase
+package nsu.nai.usecase.gallery
 
 import io.github.oshai.kotlinlogging.KotlinLogging.logger
 import nsu.client.CloudberryStorageClient
 import nsu.nai.core.table.gallery.Galleries
-import nsu.nai.core.table.image.Images
+import nsu.nai.core.table.gallery.Gallery
 import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.StdOutSqlLogger
 import org.jetbrains.exposed.sql.addLogger
-import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.sql.Connection
 import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
-import kotlin.uuid.toJavaUuid
+import kotlin.uuid.toKotlinUuid
 
-class RemoveGallery(
-    private val galleryIdentifier: Uuid,
+class CreateGallery(
+    private val userIdentifier: Long,
+    private val galleryName: String,
     //
     private val getNewConnection: () -> Connection,
     private val cloudberry: CloudberryStorageClient
 ) {
     private val logger = logger {}
 
-    suspend fun execute() {
+    suspend fun execute(): Gallery {
         Database.connect(getNewConnection)
 
-        transaction {
+        val newGalleryId = transaction {
             addLogger(StdOutSqlLogger)
 
-            Images.deleteWhere { Images.galleryUuid eq galleryIdentifier.toJavaUuid() }
-            Galleries.deleteWhere { Galleries.id eq galleryIdentifier.toJavaUuid() }
+            Galleries.insert {
+                it[name] = galleryName
+                it[userId] = userIdentifier
+            } get Galleries.id
         }
 
-        val response = cloudberry.destroyBucket(galleryIdentifier)
+        val response = cloudberry.initBucket(newGalleryId.toKotlinUuid())
         if (!response.success) {
-            logger.error { "bucket destroy failed with message ${response.statusMessage}" }
+            logger.error { "bucket init failed with message ${response.statusMessage}" }
+            throw IllegalStateException()
         }
+
+        return Gallery(newGalleryId.toKotlinUuid(), galleryName)
     }
 }

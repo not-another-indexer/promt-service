@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalUuidApi::class)
 
-package nsu.nai.usecase
+package nsu.nai.usecase.gallery
 
 import io.github.oshai.kotlinlogging.KotlinLogging.logger
 import nsu.client.CloudberryStorageClient

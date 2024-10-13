@@ -2,7 +2,8 @@
 
 package nsu.client
 
-import CloudberryStorageOuterClass.*
+import cloudberry.CloudberryStorageGrpcKt
+import cloudberry.CloudberryStorageOuterClass.*
 import com.google.protobuf.ByteString
 import io.grpc.ManagedChannel
 import kotlinx.coroutines.flow.flow
@@ -10,7 +11,7 @@ import nsu.nai.core.Parameter
 import java.io.InputStream
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
-import CloudberryStorageOuterClass.Parameter as CoefficientType
+import cloudberry.CloudberryStorageOuterClass.Parameter as CoefficientType
 
 /**
  * Клиент для взаимодействия с CloudberryStorage через gRPC
