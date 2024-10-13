@@ -32,8 +32,21 @@ import java.sql.DriverManager
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
-fun main() {
+import io.grpc.Server
+import io.grpc.ServerBuilder
+import kotlinx.coroutines.runBlocking
 
+fun main() = runBlocking {
+    val server: Server = ServerBuilder.forPort(8080)
+        .addService(AuthServiceImpl())
+        .addService(GalleryServiceImpl())
+        .addService(MainServiceImpl())
+        .build()
+        .start()
+
+    println("Server started on port ${server.port}")
+
+    server.awaitTermination()
 }
 
 class AuthServiceImpl : AuthServiceGrpcKt.AuthServiceCoroutineImplBase() {
