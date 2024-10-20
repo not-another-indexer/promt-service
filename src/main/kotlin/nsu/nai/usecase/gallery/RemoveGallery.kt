@@ -18,6 +18,7 @@ import kotlin.uuid.Uuid
 import kotlin.uuid.toJavaUuid
 
 class RemoveGallery(
+    private val userId: Long,
     private val galleryIdentifier: Uuid,
     //
     private val getNewConnection: () -> Connection,
@@ -26,6 +27,7 @@ class RemoveGallery(
     private val logger = logger {}
 
     suspend fun execute() {
+        println(userId)
         Database.connect(getNewConnection)
 
         transaction {

@@ -19,16 +19,19 @@ import kotlin.uuid.Uuid
 import kotlin.uuid.toKotlinUuid
 
 class SearchImages(
+    private val userId: Long,
     private val query: String,
     private val galleryUuid: Uuid,
     private val parameters: Map<Parameter, Double>,
-    private val count: Long,
     //
+    private val count: Long,
     private val getNewConnection: () -> Connection,
     private val cloudberry: CloudberryStorageClient
 ) {
     @OptIn(ExperimentalUuidApi::class)
     suspend fun execute(): List<Image> {
+        println(userId)
+
         val response = cloudberry.find(
             query = query,
             bucketUuid = galleryUuid,
