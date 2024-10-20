@@ -19,9 +19,7 @@ import nsu.nai.core.table.image.Image
 import nsu.nai.core.table.image.Images
 import nsu.nai.core.table.user.Users
 import nsu.nai.interceptor.AuthInterceptor
-import nsu.nai.usecase.auth.LoginUser
-import nsu.nai.usecase.auth.RefreshToken
-import nsu.nai.usecase.auth.RegisterUser
+import nsu.nai.usecase.auth.*
 import nsu.nai.usecase.gallery.*
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
@@ -69,18 +67,26 @@ class AuthServiceImpl : AuthServiceGrpcKt.AuthServiceCoroutineImplBase() {
     }
 
     override suspend fun signIn(request: NaiAuth.SignInRequest): NaiAuth.SignInResponse {
-        val (user, tokens) = LoginUser(
-            request.username,
-            request.rawPassword,
-            Config.connectionProvider
-        ).execute() ?: throw Status.INVALID_ARGUMENT.withDescription("bad credentials").asRuntimeException()
+        try {
+            val (user, tokens) = LoginUser(
+                request.username,
+                request.rawPassword,
+                Config.connectionProvider
+            ).execute()
 
-        return NaiAuth.SignInResponse.newBuilder()
-            .setUsername(request.username)
-            .setDisplayName(user.displayName)
-            .setAccessToken(tokens.first)
-            .setRefreshToken(tokens.second)
-            .build()
+            return NaiAuth.SignInResponse.newBuilder()
+                .setUsername(request.username)
+                .setDisplayName(user.displayName)
+                .setAccessToken(tokens.first)
+                .setRefreshToken(tokens.second)
+                .build()
+        } catch (exception: UserNotFoundException) {
+            throw Status.NOT_FOUND.withDescription("user not found").asRuntimeException()
+        } catch (exception: BadCredentials) {
+            throw Status.UNAUTHENTICATED.withDescription("bad credentials").asRuntimeException()
+        } catch (exception: Throwable) {
+            throw Status.INTERNAL.withDescription("internal server error").asRuntimeException()
+        }
     }
 
     override suspend fun refreshToken(request: NaiAuth.RefreshTokenRequest): NaiAuth.RefreshTokenResponse {
