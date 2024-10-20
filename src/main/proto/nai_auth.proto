@@ -6,10 +6,7 @@ message RegisterRequest {
   string rawPassword = 3;
 }
 
-message RegisterResponse {
-  string status_message = 1;
-  bool success = 2;
-}
+message Empty {}
 
 message SignInRequest {
   string username = 1;
@@ -32,7 +29,7 @@ message RefreshTokenResponse {
 }
 
 service AuthService {
-  rpc Register(RegisterRequest) returns (RegisterResponse);
+  rpc Register(RegisterRequest) returns (Empty);
   rpc SignIn(SignInRequest) returns (SignInResponse);
   rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
 }

@@ -1,7 +1,7 @@
 package nsu.nai.usecase.auth
 
-import io.github.oshai.kotlinlogging.KotlinLogging
 import nsu.nai.core.table.user.Users
+import nsu.nai.exception.UserAlreadyExistException
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
@@ -9,37 +9,51 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.security.crypto.bcrypt.BCrypt
 import java.sql.Connection
 
-
+/**
+ * Регистрация нового пользователя.
+ *
+ * @property username Имя пользователя.
+ * @property displayName Отображаемое имя пользователя.
+ * @property rawPassword Пароль пользователя в сыром виде.
+ * @property getNewConnection Функция для получения нового соединения с базой данных.
+ */
 class RegisterUser(
-    private val usernameData: String,
-    private val displayNameData: String,
+    private val username: String,
+    private val displayName: String,
     private val rawPassword: String,
     private val getNewConnection: () -> Connection
 ) {
-    private val logger = KotlinLogging.logger { }
-
-    fun execute(): Pair<String, Boolean> {
-        // Hash the raw password using BCrypt
-        val passwordHashData = BCrypt.hashpw(rawPassword, BCrypt.gensalt())
-
+    /**
+     * Выполняет регистрацию пользователя.
+     *
+     * @throws UserAlreadyExistException Если пользователь с таким именем уже существует.
+     */
+    fun execute() {
         Database.connect(getNewConnection)
 
-        return try {
-            transaction {
-                check(!Users.selectAll().where { Users.username eq usernameData }.any()) { "User already exists" }
+        transaction {
+            ensureUserDoesNotExist(username)
+            val passwordHashData = hashPassword(rawPassword)
+            insertUser(username, displayName, passwordHashData)
+        }
+    }
 
-                // Insert the new user into the Users table
-                Users.insert {
-                    it[username] = usernameData
-                    it[displayName] = displayNameData
-                    it[passwordHash] = passwordHashData
-                }
-            }
-            logger.info { "Successfully registered user ${usernameData}! ${displayNameData}!" }
-            "User registered successfully" to true
-        } catch (e: Exception) {
-            logger.error { "Registration failed: $e" }
-            "Registration failed: ${e.message}" to false
+    private fun ensureUserDoesNotExist(username: String) {
+        val userExists = Users.selectAll().where { Users.username eq username }.singleOrNull() != null
+        if (userExists) {
+            throw UserAlreadyExistException(username)
+        }
+    }
+
+    private fun hashPassword(password: String): String {
+        return BCrypt.hashpw(password, BCrypt.gensalt())
+    }
+
+    private fun insertUser(username: String, displayName: String, passwordHash: String) {
+        Users.insert {
+            it[Users.username] = username
+            it[Users.displayName] = displayName
+            it[Users.passwordHash] = passwordHash
         }
     }
 }
