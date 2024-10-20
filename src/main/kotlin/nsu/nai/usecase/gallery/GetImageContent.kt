@@ -15,11 +15,14 @@ import kotlin.uuid.Uuid
 import kotlin.uuid.toJavaUuid
 
 class GetImageContent(
+    private val userId: Long,
     private val imageIdentifier: Uuid,
     //
     private val getNewConnection: () -> Connection,
 ) {
+    @ExperimentalUuidApi
     suspend fun execute(): InputStream {
+        println(userId)
         Database.connect(getNewConnection)
 
         return transaction {

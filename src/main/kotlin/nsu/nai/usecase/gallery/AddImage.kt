@@ -22,6 +22,7 @@ import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid
 
 class AddImage(
+    private val userId: Long,
     private val galleryIdentifier: Uuid,
     private val imageDescription: String,
     private val imageExtension: String,
@@ -33,6 +34,7 @@ class AddImage(
     private val logger = logger {}
 
     suspend fun execute(): Image {
+        println(userId)
         val user = AuthInterceptor.USER_CONTEXT_KEY.get(Context.current())
 
         Database.connect(getNewConnection)

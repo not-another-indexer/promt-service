@@ -2,33 +2,36 @@ package nsu.nai.interceptor
 
 import io.grpc.*
 import nsu.nai.usecase.auth.JwtTokenFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 
 class AuthInterceptor : ServerInterceptor {
+
+    private val logger = KotlinLogging.logger {}
 
     override fun <ReqT : Any, RespT : Any> interceptCall(
         call: ServerCall<ReqT, RespT>,
         headers: Metadata,
         next: ServerCallHandler<ReqT, RespT>
     ): ServerCall.Listener<ReqT> {
-        try {
-            val token = headers.get(Metadata.Key.of("Authorization", Metadata.ASCII_STRING_MARSHALLER))
+        val tokenKey = Metadata.Key.of("Authorization", Metadata.ASCII_STRING_MARSHALLER)
+        val token = headers.get(tokenKey)
 
-            if (token != null && token.startsWith("Bearer ")) {
+        return if (token != null && token.startsWith("Bearer ")) {
+            val jwt = token.substring("Bearer ".length)
+            val userId = JwtTokenFactory.getUserIdFromToken(jwt)
 
-                val user = JwtTokenFactory.getUserIdFromToken(token.substring("Bearer ".length))
-
-                val contextWithUser = Context.current().withValue(USER_CONTEXT_KEY, user)
-                return Contexts.interceptCall(contextWithUser, call, headers, next)
+            if (userId != null) {
+                val contextWithUser = Context.current().withValue(USER_CONTEXT_KEY, userId)
+                Contexts.interceptCall(contextWithUser, call, headers, next)
             } else {
-                call.close(
-                    Status.UNAUTHENTICATED.withDescription("Authorization header is missing or invalid"),
-                    headers
-                )
-                return object : ServerCall.Listener<ReqT>() {}
+                logger.warn { "Invalid JWT token: No user ID found." }
+                call.close(Status.UNAUTHENTICATED.withDescription("Invalid JWT token"), headers)
+                object : ServerCall.Listener<ReqT>() {}
             }
-        } catch (e: Exception) {
-            call.close(Status.UNAUTHENTICATED.withDescription("Invalid JWT token"), headers)
-            return object : ServerCall.Listener<ReqT>() {}
+        } else {
+            logger.warn { "Authorization header is missing or invalid." }
+            call.close(Status.UNAUTHENTICATED.withDescription("Authorization header is missing or invalid"), headers)
+            object : ServerCall.Listener<ReqT>() {}
         }
     }
 

@@ -18,6 +18,7 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.toKotlinUuid
 
 class CreateGallery(
+    private val userId: Long,
     private val userIdentifier: Long,
     private val galleryName: String,
     //
@@ -27,6 +28,7 @@ class CreateGallery(
     private val logger = logger {}
 
     suspend fun execute(): Gallery {
+        println(userId)
         val user = AuthInterceptor.USER_CONTEXT_KEY.get(Context.current())
 
         Database.connect(getNewConnection)

@@ -17,11 +17,13 @@ import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid
 
 class GetGalleries(
+    private val userId: Long,
     private val userIdentifier: Long,
     //
     private val getNewConnection: () -> Connection,
 ) {
     fun execute(): Map<Gallery, List<Uuid>> {
+        println(userId)
         Database.connect(getNewConnection)
         /*transaction {
             SchemaUtils.create(Images)
