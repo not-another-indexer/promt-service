@@ -2,8 +2,9 @@
 
 package nsu.client
 
-import cloudberry.CloudberryStorageGrpcKt
-import cloudberry.CloudberryStorageOuterClass.*
+import cloudberry.*
+import cloudberry.CloudberryStorageOuterClass.Empty
+import cloudberry.CloudberryStorageOuterClass.FindResponse
 import com.google.protobuf.ByteString
 import io.grpc.ManagedChannel
 import kotlinx.coroutines.flow.flow
@@ -18,8 +19,6 @@ import cloudberry.CloudberryStorageOuterClass.Parameter as CoefficientType
  * @param channel gRPC канал для подключения
  */
 class CloudberryStorageClient(channel: ManagedChannel) {
-
-    // gRPC-stub, который используется для взаимодействия с сервером через переданный канал
     private val stub = CloudberryStorageGrpcKt.CloudberryStorageCoroutineStub(channel)
 
     /**
@@ -27,10 +26,10 @@ class CloudberryStorageClient(channel: ManagedChannel) {
      * @param bucketUuid UUID корзинки
      * @return ответ на запрос инициализации корзинки
      */
-    suspend fun initBucket(bucketUuid: Uuid): InitBucketResponse = stub.initBucket(
-        InitBucketRequest.newBuilder()
-            .setBucketUuid(bucketUuid.toString())
-            .build()
+    suspend fun initBucket(bucketUuid: Uuid): Empty = stub.initBucket(
+        initBucketRequest {
+            this.bucketUuid = bucketUuid.toString()
+        }
     )
 
     /**
@@ -38,10 +37,10 @@ class CloudberryStorageClient(channel: ManagedChannel) {
      * @param bucketUuid UUID корзинки
      * @return ответ на запрос удаления корзинки
      */
-    suspend fun destroyBucket(bucketUuid: Uuid): DestroyBucketResponse = stub.destroyBucket(
-        DestroyBucketRequest.newBuilder()
-            .setBucketUuid(bucketUuid.toString())
-            .build()
+    suspend fun destroyBucket(bucketUuid: Uuid): Empty = stub.destroyBucket(
+        destroyBucketRequest {
+            this.bucketUuid = bucketUuid.toString()
+        }
     )
 
     /**
@@ -58,19 +57,19 @@ class CloudberryStorageClient(channel: ManagedChannel) {
         parameters: Map<Parameter, Double>,
         count: Long
     ): FindResponse = stub.find(
-        FindRequest.newBuilder()
-            .setQuery(query)
-            .setBucketUuid(bucketUuid.toString())
-            .addAllParameters(
+        findRequest {
+            this.query = query
+            this.bucketUuid = bucketUuid.toString()
+            this.parameters.addAll(
                 parameters.map { (key, value) ->
-                    Coefficient.newBuilder()
-                        .setParameter(CoefficientType.valueOf(key.name))
-                        .setValue(value)
-                        .build()
+                    coefficient {
+                        this.parameter = CoefficientType.valueOf(key.name)
+                        this.value = value
+                    }
                 }
             )
-            .setCount(count)
-            .build()
+            this.count = count
+        }
     )
 
     suspend fun putEntry(
@@ -79,39 +78,33 @@ class CloudberryStorageClient(channel: ManagedChannel) {
         extension: String,
         description: String,
         content: InputStream
-    ): PutEntryResponse = stub.putEntry(
+    ): Empty = stub.putEntry(
         flow {
             // Сначала отправляем метаданные записи
             emit(
-                PutEntryRequest.newBuilder()
-                    .setMetadata(
-                        ContentMetadata.newBuilder()
-                            .setContentUuid(contentUuid.toString())
-                            .setBucketUuid(bucketUuid.toString())
-                            .setExtension(extension)
-                            .setDescription(description)
-                            .build()
-                    )
-                    .build()
+                putEntryRequest {
+                    metadata = contentMetadata {
+                        this.contentUuid = contentUuid.toString()
+                        this.bucketUuid = bucketUuid.toString()
+                        this.extension = extension
+                        this.description = description
+                    }
+                }
             )
 
             // Буфер для чтения данных по частям (64 КБ)
             val buffer = ByteArray(64 * 1024)
 
-            generateSequence {
-                content.read(buffer).takeIf { it != -1 }
-            }
+            generateSequence { content.read(buffer).takeIf { it != -1 } }
                 .forEach { bytesRead ->
                     emit(
-                        PutEntryRequest.newBuilder()
-                            .setChunkData(
-                                ByteString.copyFrom(
-                                    buffer,
-                                    0,
-                                    bytesRead
-                                )
+                        putEntryRequest {
+                            chunkData = ByteString.copyFrom(
+                                buffer,
+                                0,
+                                bytesRead
                             )
-                            .build()
+                        }
                     )
                 }
         }
@@ -123,10 +116,10 @@ class CloudberryStorageClient(channel: ManagedChannel) {
      * @param bucketUuid UUID корзинки
      * @return ответ на запрос удаления записи
      */
-    suspend fun removeEntry(contentUuid: Uuid, bucketUuid: Uuid): RemoveEntryResponse = stub.removeEntry(
-        RemoveEntryRequest.newBuilder()
-            .setContentUuid(contentUuid.toString())
-            .setBucketUuid(bucketUuid.toString())
-            .build()
+    suspend fun removeEntry(contentUuid: Uuid, bucketUuid: Uuid): Empty = stub.removeEntry(
+        removeEntryRequest {
+            this.contentUuid = contentUuid.toString()
+            this.bucketUuid = bucketUuid.toString()
+        }
     )
 }
