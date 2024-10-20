@@ -3,9 +3,11 @@
 package nsu.nai.usecase.gallery
 
 import io.github.oshai.kotlinlogging.KotlinLogging.logger
+import io.grpc.Context
 import nsu.client.CloudberryStorageClient
 import nsu.nai.core.table.gallery.Galleries
 import nsu.nai.core.table.gallery.Gallery
+import nsu.nai.interceptor.AuthInterceptor
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.StdOutSqlLogger
 import org.jetbrains.exposed.sql.addLogger
@@ -25,6 +27,8 @@ class CreateGallery(
     private val logger = logger {}
 
     suspend fun execute(): Gallery {
+        val user = AuthInterceptor.USER_CONTEXT_KEY.get(Context.current())
+
         Database.connect(getNewConnection)
 
         val newGalleryId = transaction {
