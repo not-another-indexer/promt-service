@@ -13,7 +13,7 @@ import org.jetbrains.exposed.sql.addLogger
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.sql.Connection
-import java.util.UUID
+import java.util.*
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import kotlin.uuid.toKotlinUuid
@@ -27,6 +27,7 @@ class SearchImages(
     private val getNewConnection: () -> Connection,
     private val cloudberry: CloudberryStorageClient
 ) {
+    @OptIn(ExperimentalUuidApi::class)
     suspend fun execute(): List<Image> {
         val response = cloudberry.find(
             query = query,
