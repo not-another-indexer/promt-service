@@ -21,4 +21,6 @@ object Images : Table("images") {
     val galleryUuid: Column<UUID> = (uuid("gallery_uuid") references Galleries.id)
     val description: Column<String> = varchar("description", length = 2048)
     val content: Column<ExposedBlob> = blob("content")
+
+    override val primaryKey = PrimaryKey(Images.id, name = "PK_Image_ID")
 }
