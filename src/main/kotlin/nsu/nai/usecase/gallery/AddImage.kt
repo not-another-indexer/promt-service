@@ -3,9 +3,11 @@
 package nsu.nai.usecase.gallery
 
 import io.github.oshai.kotlinlogging.KotlinLogging.logger
+import io.grpc.Context
 import nsu.client.CloudberryStorageClient
 import nsu.nai.core.table.image.Image
 import nsu.nai.core.table.image.Images
+import nsu.nai.interceptor.AuthInterceptor
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.StdOutSqlLogger
 import org.jetbrains.exposed.sql.addLogger
@@ -31,6 +33,8 @@ class AddImage(
     private val logger = logger {}
 
     suspend fun execute(): Image {
+        val user = AuthInterceptor.USER_CONTEXT_KEY.get(Context.current())
+
         Database.connect(getNewConnection)
 
         val newImageId = transaction {

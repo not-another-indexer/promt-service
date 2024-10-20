@@ -2,8 +2,10 @@
 
 package nsu.nai.usecase.gallery
 
+import io.grpc.Context
 import nsu.nai.core.table.image.Image
 import nsu.nai.core.table.image.Images
+import nsu.nai.interceptor.AuthInterceptor
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.StdOutSqlLogger
 import org.jetbrains.exposed.sql.addLogger
@@ -23,6 +25,8 @@ class GetGalleryImages(
     private val getNewConnection: () -> Connection,
 ) {
     fun execute(): Pair<List<Image>, Long> {
+        val user = AuthInterceptor.USER_CONTEXT_KEY.get(Context.current())
+
         Database.connect(getNewConnection)
 
         return transaction {

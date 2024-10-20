@@ -2,29 +2,30 @@
 
 package nsu
 
+import AuthServiceGrpcKt
+import NaiAuth
 import io.github.oshai.kotlinlogging.KotlinLogging
-import io.grpc.ManagedChannel
-import io.grpc.ManagedChannelBuilder
-import io.grpc.Status
+import io.grpc.*
 import io.grpc.stub.StreamObserver
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import nai.*
+import kotlinx.coroutines.*
+import nai.GalleryServiceGrpc
+import nai.MainServiceGrpc
+import nai.Nai
 import nai.Nai.ContentMetadata
 import nsu.client.CloudberryStorageClient
 import nsu.nai.core.Parameter
+import nsu.nai.core.table.gallery.Galleries
 import nsu.nai.core.table.image.Image
+import nsu.nai.core.table.image.Images
+import nsu.nai.core.table.user.Users
+import nsu.nai.interceptor.AuthInterceptor
 import nsu.nai.usecase.auth.LoginUser
 import nsu.nai.usecase.auth.RefreshToken
 import nsu.nai.usecase.auth.RegisterUser
-import nsu.nai.usecase.gallery.AddImage
-import nsu.nai.usecase.gallery.GetGalleryImages
-import nsu.nai.usecase.gallery.GetImageContent
-import nsu.nai.usecase.gallery.RemoveImage
-import nsu.nai.usecase.gallery.SearchImages
+import nsu.nai.usecase.gallery.*
+import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.SchemaUtils
+import org.jetbrains.exposed.sql.transactions.transaction
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.sql.Connection
@@ -32,17 +33,20 @@ import java.sql.DriverManager
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
-import io.grpc.Server
-import io.grpc.ServerBuilder
-import kotlinx.coroutines.runBlocking
-
 fun main() = runBlocking {
+    val authInterceptor = AuthInterceptor();
+
     val server: Server = ServerBuilder.forPort(8080)
         .addService(AuthServiceImpl())
-        .addService(GalleryServiceImpl())
-        .addService(MainServiceImpl())
+        .addService(ServerInterceptors.intercept(GalleryServiceImpl(), authInterceptor))
+        .addService(ServerInterceptors.intercept(MainServiceImpl(), authInterceptor))
         .build()
         .start()
+
+    Database.connect(Config.connectionProvider)
+    transaction {
+        SchemaUtils.create(Users, Galleries, Images)
+    }
 
     println("Server started on port ${server.port}")
 
