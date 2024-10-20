@@ -17,7 +17,7 @@ data class User(
 }
 
 object Users : Table("users") {
-    val id: Column<Long> = long("id")
+    val id: Column<Long> = long("id").autoIncrement()
     val username: Column<String> = varchar("username", length = 64)
     val displayName: Column<String> = varchar("display_name", length = 128)
     val passwordHash: Column<String> = varchar("password_hash", length = 128)

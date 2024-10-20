@@ -4,6 +4,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import nsu.nai.core.table.user.Users
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.security.crypto.bcrypt.BCrypt
 import java.sql.Connection
@@ -25,6 +26,8 @@ class RegisterUser(
 
         return try {
             transaction {
+                check(!Users.selectAll().where { Users.username eq usernameData }.any()) { "User already exists" }
+
                 // Insert the new user into the Users table
                 Users.insert {
                     it[username] = usernameData
@@ -32,6 +35,7 @@ class RegisterUser(
                     it[passwordHash] = passwordHashData
                 }
             }
+            logger.info { "Successfully registered user ${usernameData}! ${displayNameData}!" }
             "User registered successfully" to true
         } catch (e: Exception) {
             logger.error { "Registration failed: $e" }
