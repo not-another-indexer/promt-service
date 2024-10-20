@@ -5,7 +5,7 @@ package nsu.nai.core.table.gallery
 import nsu.nai.core.table.user.Users
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Table
-import java.util.UUID
+import java.util.*
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 

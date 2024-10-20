@@ -24,7 +24,8 @@ class RemoveImage(
 ) {
     private val logger = logger {}
 
-    suspend fun execute() : Pair<String, Boolean> {
+    @OptIn(ExperimentalUuidApi::class)
+    suspend fun execute(): Pair<String, Boolean> {
         Database.connect(getNewConnection)
 
         val galleryUuid = transaction {
