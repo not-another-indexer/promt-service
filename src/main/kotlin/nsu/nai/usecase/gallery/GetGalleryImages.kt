@@ -18,6 +18,7 @@ import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid
 
 class GetGalleryImages(
+    private val userId: Long,
     private val galleryIdentifier: Uuid,
     private val size: Int,
     private val offset: Long,
@@ -25,6 +26,7 @@ class GetGalleryImages(
     private val getNewConnection: () -> Connection,
 ) {
     fun execute(): Pair<List<Image>, Long> {
+        println(userId)
         val user = AuthInterceptor.USER_CONTEXT_KEY.get(Context.current())
 
         Database.connect(getNewConnection)
