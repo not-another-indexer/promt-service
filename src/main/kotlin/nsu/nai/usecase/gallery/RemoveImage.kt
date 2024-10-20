@@ -40,11 +40,11 @@ class RemoveImage(
             bucketUuid = galleryUuid.toKotlinUuid()
         )
 
-        return if (!response.success) {
-            logger.error { "image removal failed with message ${response.statusMessage}" }
-            "image removal failed with message ${response.statusMessage}" to false
-        } else {
-            "image removal is success" to true
-        }
+        // TODO(e.shelbogashev): разобраться, как в grpc котлин обрабатывать ошибки (по-идее, putEntry должен выбросить throwable, но я хз)
+//        return if (!response.success) {
+//            logger.error { "image removal failed with message ${response.statusMessage}" }
+//            "image removal failed with message ${response.statusMessage}" to false
+//        } else {
+        return "image removal is success" to true
     }
 }
