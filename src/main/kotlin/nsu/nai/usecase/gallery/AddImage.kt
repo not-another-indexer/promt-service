@@ -56,9 +56,10 @@ class AddImage(
             description = imageDescription,
             content = imageContent,
         )
-        if (!response.success) {
-            logger.error { "image addition failed with message ${response.statusMessage}" }
-        }
+        // TODO(e.shelbogashev): разобраться, как в grpc котлин обрабатывать ошибки (по-идее, putEntry должен выбросить throwable, но я хз)
+//        if (!response.success) {
+//            logger.error { "image addition failed with message ${response.statusMessage}" }
+//        }
 
         return Image(
             id = newImageId.toKotlinUuid(),
