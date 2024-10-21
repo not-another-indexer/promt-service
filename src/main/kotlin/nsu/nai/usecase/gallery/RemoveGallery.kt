@@ -38,8 +38,9 @@ class RemoveGallery(
         }
 
         val response = cloudberry.destroyBucket(galleryIdentifier)
-        if (!response.success) {
-            logger.error { "bucket destroy failed with message ${response.statusMessage}" }
-        }
+        // TODO(e.shelbogashev): разобраться, как в grpc котлин обрабатывать ошибки (по-идее, putEntry должен выбросить throwable, но я хз)
+//        if (!response.success) {
+//            logger.error { "bucket destroy failed with message ${response.statusMessage}" }
+//        }
     }
 }

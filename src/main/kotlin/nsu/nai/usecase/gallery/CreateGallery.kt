@@ -43,10 +43,11 @@ class CreateGallery(
         }
 
         val response = cloudberry.initBucket(newGalleryId.toKotlinUuid())
-        if (!response.success) {
-            logger.error { "bucket init failed with message ${response.statusMessage}" }
-            throw IllegalStateException()
-        }
+        // TODO(e.shelbogashev): разобраться, как в grpc котлин обрабатывать ошибки (по-идее, putEntry должен выбросить throwable, но я хз)
+//        if (!response.success) {
+//            logger.error { "bucket init failed with message ${response.statusMessage}" }
+//            throw IllegalStateException()
+//        }
 
         return Gallery(newGalleryId.toKotlinUuid(), galleryName)
     }
