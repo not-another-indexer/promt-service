@@ -1,8 +1,9 @@
-@file:OptIn(ExperimentalUuidApi::class)
+@file:OptIn(ExperimentalUuidApi::class, ExperimentalUuidApi::class)
 
 package nsu.nai.usecase.gallery
 
 import io.github.oshai.kotlinlogging.KotlinLogging.logger
+import io.grpc.StatusRuntimeException
 import nsu.client.CloudberryStorageClient
 import nsu.nai.core.table.gallery.Galleries
 import nsu.nai.core.table.image.Images
@@ -37,7 +38,13 @@ class RemoveGallery(
             Galleries.deleteWhere { id eq galleryIdentifier.toJavaUuid() }
         }
 
-        val response = cloudberry.destroyBucket(galleryIdentifier)
+        try {
+            val response = cloudberry.destroyBucket(galleryIdentifier)
+        } catch (e: StatusRuntimeException) {
+            logger.error { "gallery removal failed with status ${e.status}, with message ${e.message}" }
+            throw e
+        }
+
         // TODO(e.shelbogashev): разобраться, как в grpc котлин обрабатывать ошибки (по-идее, putEntry должен выбросить throwable, но я хз)
 //        if (!response.success) {
 //            logger.error { "bucket destroy failed with message ${response.statusMessage}" }
