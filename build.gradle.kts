@@ -52,12 +52,18 @@ dependencies {
     // testing kotlin
     testImplementation(kotlin("test-junit"))
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:${properties["kotlin_version"]}")
+    testImplementation("io.kotest:kotest-assertions-core-jvm:${properties["kotest_version"]}")
+    testImplementation ("io.mockk:mockk:${properties["mockk_version"]}")
+    testImplementation("io.kotest:kotest-runner-junit5:${properties["kotest_version"]}")
+    testImplementation("io.kotest:kotest-assertions-core:${properties["kotest_version"]}")
+    testImplementation("org.testcontainers:junit-jupiter:${properties["testcontainers_version"]}")
+    testImplementation("org.testcontainers:postgresql:${properties["testcontainers_version"]}")
 }
 
 sourceSets {
     main {
         proto {
-            srcDirs("${layout.buildDirectory}/generated/source/proto")
+            srcDirs("generated/source/proto")
         }
     }
 }
@@ -88,9 +94,18 @@ protobuf {
     generatedFilesBaseDir = "$projectDir/src/generated"
 }
 
-tasks.withType<KotlinCompile>().all {
-    compilerOptions {
-        freeCompilerArgs = listOf("-opt-in=kotlin.RequiresOptIn")
+tasks {
+    processResources {
+        dependsOn("generateProto")
+    }
+    withType<KotlinCompile>().all {
+        compilerOptions {
+            freeCompilerArgs = listOf("-opt-in=kotlin.RequiresOptIn")
+        }
+    }
+    withType<Test> {
+        useJUnitPlatform()
     }
 }
+
 
