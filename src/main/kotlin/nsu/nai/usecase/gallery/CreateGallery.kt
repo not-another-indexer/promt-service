@@ -20,7 +20,6 @@ import kotlin.uuid.toKotlinUuid
 
 class CreateGallery(
     private val userId: Long,
-    private val userIdentifier: Long,
     private val galleryName: String,
     //
     private val getNewConnection: () -> Connection,
@@ -38,8 +37,8 @@ class CreateGallery(
             addLogger(StdOutSqlLogger)
 
             Galleries.insert {
-                it[name] = galleryName
-                it[userId] = userIdentifier
+                it[Galleries.name] = galleryName
+                it[Galleries.userId] = userId
             } get Galleries.id
         }
 
