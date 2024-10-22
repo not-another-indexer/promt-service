@@ -4,6 +4,7 @@ package nsu.nai.usecase.gallery
 
 import io.github.oshai.kotlinlogging.KotlinLogging.logger
 import io.grpc.Context
+import io.grpc.StatusRuntimeException
 import nsu.client.CloudberryStorageClient
 import nsu.nai.core.table.image.Image
 import nsu.nai.core.table.image.Images
@@ -49,13 +50,19 @@ class AddImage(
             } get Images.id
         }
 
-        val response = cloudberry.putEntry(
-            contentUuid = newImageId.toKotlinUuid(),
-            bucketUuid = galleryIdentifier,
-            extension = imageExtension,
-            description = imageDescription,
-            content = imageContent,
-        )
+        try {
+            val response = cloudberry.putEntry(
+                contentUuid = newImageId.toKotlinUuid(),
+                bucketUuid = galleryIdentifier,
+                extension = imageExtension,
+                description = imageDescription,
+                content = imageContent,
+            )
+        } catch (e: StatusRuntimeException) {
+            logger.error { "image adding failed with status ${e.status}, with message ${e.message}" }
+            throw e
+        }
+
         // TODO(e.shelbogashev): разобраться, как в grpc котлин обрабатывать ошибки (по-идее, putEntry должен выбросить throwable, но я хз)
 //        if (!response.success) {
 //            logger.error { "image addition failed with message ${response.statusMessage}" }

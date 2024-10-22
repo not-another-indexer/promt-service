@@ -2,6 +2,8 @@ package nsu.nai.usecase.auth
 
 import nsu.nai.core.table.user.Users
 import nsu.nai.exception.UserAlreadyExistException
+import nsu.nai.exception.ValidationException
+import nsu.nai.usecase.auth.utils.validateCredentials
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
@@ -29,6 +31,11 @@ class RegisterUser(
      * @throws UserAlreadyExistException Если пользователь с таким именем уже существует.
      */
     fun execute() {
+        val errors = validateCredentials(rawPassword, username)
+        if (errors.isNotEmpty()) {
+            throw ValidationException(errors.joinToString(separator = ", "))
+        }
+
         Database.connect(getNewConnection)
 
         transaction {
