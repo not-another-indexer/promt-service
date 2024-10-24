@@ -3,6 +3,7 @@
 package nsu.nai.usecase.gallery
 
 import io.github.oshai.kotlinlogging.KotlinLogging.logger
+import io.grpc.StatusRuntimeException
 import nsu.client.CloudberryStorageClient
 import nsu.nai.core.table.image.Images
 import org.jetbrains.exposed.sql.Database
@@ -16,6 +17,7 @@ import kotlin.uuid.Uuid
 import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid
 
+@OptIn(ExperimentalUuidApi::class)
 class RemoveImage(
     private val userId: Long,
     private val imageIdentifier: Uuid,
@@ -35,10 +37,15 @@ class RemoveImage(
             Images.deleteReturning { Images.id eq imageIdentifier.toJavaUuid() }.single()[Images.galleryUuid]
         }
 
-        val response = cloudberry.removeEntry(
-            contentUuid = imageIdentifier,
-            bucketUuid = galleryUuid.toKotlinUuid()
-        )
+        try {
+            val response = cloudberry.removeEntry(
+                contentUuid = imageIdentifier,
+                bucketUuid = galleryUuid.toKotlinUuid()
+            )
+        } catch (e: StatusRuntimeException) {
+            logger.error { "image removal failed with status ${e.status}, with message ${e.message}" }
+            "image removal failed with status ${e.status}, with message ${e.message}" to false
+        }
 
         // TODO(e.shelbogashev): разобраться, как в grpc котлин обрабатывать ошибки (по-идее, putEntry должен выбросить throwable, но я хз)
 //        return if (!response.success) {

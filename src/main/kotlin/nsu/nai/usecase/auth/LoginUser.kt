@@ -3,6 +3,8 @@ package nsu.nai.usecase.auth
 import nsu.nai.core.table.user.User
 import nsu.nai.core.table.user.Users
 import nsu.nai.exception.BadCredentials
+import nsu.nai.exception.ValidationException
+import nsu.nai.usecase.auth.utils.validateCredentials
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -22,6 +24,11 @@ class LoginUser(
      * @throws BadCredentials Если учетные данные неверны.
      */
     fun execute(): Pair<User, Pair<String, String>> {
+        val errors = validateCredentials(rawPassword, username)
+        if (errors.isNotEmpty()) {
+            throw ValidationException(errors.joinToString(separator = ", "))
+        }
+
         Database.connect(getConnection)
 
         val user = fetchUser() ?: throw BadCredentials()

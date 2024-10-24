@@ -1,9 +1,10 @@
-@file:OptIn(ExperimentalUuidApi::class)
+@file:OptIn(ExperimentalUuidApi::class, ExperimentalUuidApi::class)
 
 package nsu.nai.usecase.gallery
 
 import io.github.oshai.kotlinlogging.KotlinLogging.logger
 import io.grpc.Context
+import io.grpc.StatusRuntimeException
 import nsu.client.CloudberryStorageClient
 import nsu.nai.core.table.gallery.Galleries
 import nsu.nai.core.table.gallery.Gallery
@@ -42,7 +43,13 @@ class CreateGallery(
             } get Galleries.id
         }
 
-        val response = cloudberry.initBucket(newGalleryId.toKotlinUuid())
+        try {
+            val response = cloudberry.initBucket(newGalleryId.toKotlinUuid())
+        } catch (e: StatusRuntimeException) {
+            logger.error { "gallery creation failed with status ${e.status}, with message ${e.message}" }
+            throw e
+        }
+
         // TODO(e.shelbogashev): разобраться, как в grpc котлин обрабатывать ошибки (по-идее, putEntry должен выбросить throwable, но я хз)
 //        if (!response.success) {
 //            logger.error { "bucket init failed with message ${response.statusMessage}" }
