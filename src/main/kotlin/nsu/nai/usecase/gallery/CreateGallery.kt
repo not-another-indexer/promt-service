@@ -28,9 +28,6 @@ class CreateGallery(
     private val logger = logger {}
 
     suspend fun execute(): Gallery {
-        println(userId)
-        val user = AuthInterceptor.USER_CONTEXT_KEY.get(Context.current())
-
         Database.connect(getNewConnection)
 
         val newGalleryId = transaction {
@@ -48,12 +45,6 @@ class CreateGallery(
             logger.error { "gallery creation failed with status ${e.status}, with message ${e.message}" }
             throw e
         }
-
-        // TODO(e.shelbogashev): разобраться, как в grpc котлин обрабатывать ошибки (по-идее, putEntry должен выбросить throwable, но я хз)
-//        if (!response.success) {
-//            logger.error { "bucket init failed with message ${response.statusMessage}" }
-//            throw IllegalStateException()
-//        }
 
         return Gallery(newGalleryId.toKotlinUuid(), galleryName)
     }
