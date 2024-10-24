@@ -102,7 +102,7 @@ class GalleryServiceImpl : GalleryServiceGrpc.GalleryServiceImplBase() {
                         responseObserver.onCompleted()
 
                     } catch (e: Exception) {
-                        logger.error(e) { "Error while processing image" }
+                        logger.error(e) { "Error while processing image: ${e.message}" }
                         responseObserver.onError(Status.INTERNAL.withDescription(e.message).asRuntimeException())
                     }
                 }

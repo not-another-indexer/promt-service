@@ -4,6 +4,7 @@ package nsu.nai.usecase.gallery
 
 import io.github.oshai.kotlinlogging.KotlinLogging.logger
 import io.grpc.Context
+import io.grpc.Status
 import io.grpc.StatusRuntimeException
 import nsu.client.CloudberryStorageClient
 import nsu.nai.core.table.image.Image
@@ -58,15 +59,31 @@ class AddImage(
                 description = imageDescription,
                 content = imageContent,
             )
+            // Обработка успешного ответа
+            logger.info { "successfully uploaded image with id $newImageId" }
         } catch (e: StatusRuntimeException) {
-            logger.error { "image adding failed with status ${e.status}, with message ${e.message}" }
-            throw e
-        }
+            logger.error { "gRPC call failed: ${e.status}, message: ${e.message}" }
 
-        // TODO(e.shelbogashev): разобраться, как в grpc котлин обрабатывать ошибки (по-идее, putEntry должен выбросить throwable, но я хз)
-//        if (!response.success) {
-//            logger.error { "image addition failed with message ${response.statusMessage}" }
-//        }
+            // Обрабатываем различные статусы
+            when (e.status.code) {
+                Status.Code.NOT_FOUND -> {
+                    logger.error { "Bucket or content not found" }
+                    throw RuntimeException("Bucket or content not found")
+                }
+                Status.Code.PERMISSION_DENIED -> {
+                    logger.error { "Permission denied" }
+                    throw ImageUploadException("Permission denied")
+                }
+                Status.Code.UNAVAILABLE -> {
+                    logger.error { "Service unavailable" }
+                    throw ImageUploadException("Service is temporarily unavailable, please try again later")
+                }
+                else -> {
+                    logger.error { "Unknown error occurred: ${e.status}" }
+                    throw ImageUploadException("An unknown error occurred")
+                }
+            }
+        }
 
         return Image(
             id = newImageId.toKotlinUuid(),
@@ -74,4 +91,6 @@ class AddImage(
             description = imageDescription
         )
     }
+
+    public class ImageUploadException(message: String) : Exception(message)
 }
