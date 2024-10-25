@@ -16,7 +16,6 @@ import org.jetbrains.exposed.sql.addLogger
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.statements.api.ExposedBlob
 import org.jetbrains.exposed.sql.transactions.transaction
-import java.io.InputStream
 import java.sql.Connection
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -28,7 +27,7 @@ class AddImage(
     private val galleryIdentifier: Uuid,
     private val imageDescription: String,
     private val imageExtension: String,
-    private val imageContent: InputStream,
+    private val imageContent: ByteArray,
     //
     private val getNewConnection: () -> Connection,
     private val cloudberry: CloudberryStorageClient
@@ -92,5 +91,5 @@ class AddImage(
         )
     }
 
-    public class ImageUploadException(message: String) : Exception(message)
+    class ImageUploadException(message: String) : Exception(message)
 }

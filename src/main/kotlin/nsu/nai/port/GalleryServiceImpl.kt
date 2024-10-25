@@ -15,7 +15,6 @@ import nsu.nai.core.Parameter
 import nsu.nai.core.table.image.Image
 import nsu.nai.usecase.gallery.*
 import nsu.platform.userId
-import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -52,21 +51,8 @@ class GalleryServiceImpl : GalleryServiceGrpc.GalleryServiceImplBase() {
             private val logger = KotlinLogging.logger {}
 
             override fun onNext(request: Nai.AddImageRequest) {
-                when (request.payloadCase) {
-                    Nai.AddImageRequest.PayloadCase.METADATA -> {
-                        metadata = request.metadata
-                    }
-
-                    Nai.AddImageRequest.PayloadCase.CHUNK_DATA -> {
-                        request.chunkData.writeTo(imageChunks)
-                    }
-
-                    else -> {
-                        responseObserver.onError(
-                            Status.INVALID_ARGUMENT.withDescription("Invalid payload").asRuntimeException()
-                        )
-                    }
-                }
+                metadata = request.metadata
+                request.chunkData.writeTo(imageChunks)
             }
 
             override fun onError(t: Throwable) {
@@ -82,7 +68,7 @@ class GalleryServiceImpl : GalleryServiceGrpc.GalleryServiceImplBase() {
                     return
                 }
                 val userId = Context.current().userId
-                val imageContent = ByteArrayInputStream(imageChunks.toByteArray())
+                val imageContent = imageChunks.toByteArray()
 
                 GlobalScope.launch {
                     try {

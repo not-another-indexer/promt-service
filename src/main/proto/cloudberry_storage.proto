@@ -5,7 +5,7 @@ package cloudberry;
 service CloudberryStorage {
     rpc InitBucket (InitBucketRequest) returns (Empty);
     rpc DestroyBucket (DestroyBucketRequest) returns (Empty);
-    rpc PutEntry (stream PutEntryRequest) returns (Empty);
+    rpc PutEntry (PutEntryRequest) returns (Empty);
     rpc RemoveEntry (RemoveEntryRequest) returns (Empty);
     rpc Find (FindRequest) returns (FindResponse);
 }
@@ -61,10 +61,8 @@ message ContentMetadata {
 }
 
 message PutEntryRequest {
-    oneof payload {
-        ContentMetadata metadata = 1;
-        bytes chunk_data = 2;
-    }
+    ContentMetadata metadata = 1;
+    bytes data = 2;
 }
 
 message RemoveEntryRequest {
