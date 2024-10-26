@@ -31,7 +31,7 @@ class GalleryServiceImpl : GalleryServiceGrpcKt.GalleryServiceCoroutineImplBase(
     override suspend fun getGalleryImages(request: GetGalleryImagesRequest): GetGalleryImagesResponse {
         return handleRequest {
             require((request.pSize > 0) and (request.pSize < 1000)) { "size must be greater than 0 and less than 1000" }
-            require(request.pOffset > 0) { "offset must be greater than 0" }
+            require(request.pOffset >= 0) { "offset must be greater than or equal to 0" }
 
             val userId = Context.current().userId
             val (images: List<Image>, totalSize: Long) = GetGalleryImages(

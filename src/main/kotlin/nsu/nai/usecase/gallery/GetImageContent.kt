@@ -26,21 +26,11 @@ class GetImageContent(
         return transaction {
             addLogger(StdOutSqlLogger)
 
-            isUserImage(userId, imageId)
-
-            Images.selectAll()
+            Images.innerJoin(Galleries) { Galleries.userId eq userId }.selectAll()
                 .where { Images.id eq imageId.toJavaUuid() }
-                .single()[Images.content]
-                .inputStream
-        }
-    }
-
-    private fun isUserImage(userId: Long, imageId: Uuid) {
-        val isUserImage = Galleries.innerJoin(Images) { Galleries.userId eq userId }.selectAll()
-            .where { Images.id eq imageId.toJavaUuid() }.any()
-
-        if (!isUserImage) {
-            throw EntityNotFoundException("User image not found")
+                .singleOrNull()
+                ?.let { it[Images.content].inputStream }
+                ?: throw EntityNotFoundException(imageId.toString())
         }
     }
 }
