@@ -2,186 +2,132 @@
 
 package nsu.nai.port
 
+import com.google.protobuf.ByteString
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.grpc.Context
 import io.grpc.Status
-import io.grpc.stub.StreamObserver
 import kotlinx.coroutines.*
-import nai.GalleryServiceGrpc
-import nai.Nai
-import nai.Nai.ContentMetadata
+import nai.*
+import nai.Nai.*
+import nai.Nai.GetGalleryImagesRequest
 import nsu.Config
 import nsu.nai.core.Parameter
 import nsu.nai.core.table.image.Image
+import nsu.nai.core.table.image.ImageExtension
+import nsu.nai.exception.EntityAlreadyExistsException
+import nsu.nai.exception.EntityNotFoundException
+import nsu.nai.exception.InvalidExtensionException
+import nsu.nai.exception.MetadataNotFoundException
 import nsu.nai.usecase.gallery.*
 import nsu.platform.userId
 import java.io.ByteArrayOutputStream
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
-class GalleryServiceImpl : GalleryServiceGrpc.GalleryServiceImplBase() {
-    override fun getGalleryImages(
-        request: Nai.GetGalleryImagesRequest, responseObserver: StreamObserver<Nai.GetGalleryImagesResponse>
-    ) {
-        try {
+class GalleryServiceImpl : GalleryServiceGrpcKt.GalleryServiceCoroutineImplBase() {
+
+    val logger = KotlinLogging.logger {}
+
+    override suspend fun getGalleryImages(request: GetGalleryImagesRequest): GetGalleryImagesResponse {
+        return handleRequest {
+            require((request.pSize > 0) and (request.pSize < 1000)) { "size must be greater than 0 and less than 1000" }
+            require(request.pOffset > 0) { "offset must be greater than 0" }
+
             val userId = Context.current().userId
-            val (images: List<Image>, total: Long) = GetGalleryImages(
-                userId, Uuid.parse(request.galleryId), request.size, request.offset.toLong(), Config.connectionProvider
+            val (images: List<Image>, totalSize: Long) = GetGalleryImages(
+                userId,
+                Uuid.parse(request.pGalleryId),
+                request.pSize,
+                request.pOffset.toLong(),
+                Config.connectionProvider
             ).execute()
 
             val imageResponses = images.map { image ->
-                Nai.Image.newBuilder().setImageId(image.id.toString()).setGalleryId(image.galleryId.toString())
-                    .setDescription(image.description).build()
-            }
-
-            val response =
-                Nai.GetGalleryImagesResponse.newBuilder().addAllContent(imageResponses).setTotal(total).build()
-
-            responseObserver.onNext(response)
-            responseObserver.onCompleted()
-        } catch (e: Exception) {
-            responseObserver.onError(Status.INTERNAL.withDescription(e.message).asRuntimeException())
-        }
-    }
-
-    override fun addImage(responseObserver: StreamObserver<Nai.AddImageResponse>): StreamObserver<Nai.AddImageRequest> {
-        return object : StreamObserver<Nai.AddImageRequest> {
-            private var metadata: ContentMetadata? = null
-            private val imageChunks = ByteArrayOutputStream()
-            private val logger = KotlinLogging.logger {}
-
-            override fun onNext(request: Nai.AddImageRequest) {
-                metadata = request.metadata
-                request.chunkData.writeTo(imageChunks)
-            }
-
-            override fun onError(t: Throwable) {
-                logger.error(t) { "Error during image upload: ${t.message}" }
-                responseObserver.onError(t)
-            }
-
-            override fun onCompleted() {
-                if (metadata == null) {
-                    responseObserver.onError(
-                        Status.INVALID_ARGUMENT.withDescription("Metadata is missing").asRuntimeException()
-                    )
-                    return
+                image {
+                    pImageId = image.id.toString()
+                    pGalleryId = image.galleryId.toString()
+                    pDescription = image.description
                 }
-                val userId = Context.current().userId
-                val imageContent = imageChunks.toByteArray()
-
-                GlobalScope.launch {
-                    try {
-                        val image = AddImage(
-                            userId,
-                            galleryIdentifier = Uuid.parse(metadata!!.galleryId),
-                            imageDescription = metadata!!.description,
-                            imageExtension = metadata!!.extension,
-                            imageContent = imageContent,
-                            getNewConnection = Config.connectionProvider,
-                            cloudberry = Config.cloudberry
-                        ).execute()
-
-                        val response = Nai.AddImageResponse.newBuilder().setImageId(image.id.toString()).build()
-
-                        responseObserver.onNext(response)
-                        responseObserver.onCompleted()
-
-                    } catch (e: Exception) {
-                        logger.error(e) { "Error while processing image: ${e.message}" }
-                        responseObserver.onError(Status.INTERNAL.withDescription(e.message).asRuntimeException())
-                    }
-                }
+            }
+            getGalleryImagesResponse {
+                pContent.addAll(imageResponses)
+                pTotal = totalSize
             }
         }
     }
 
-    override fun deleteImage(
-        request: Nai.DeleteImageRequest, responseObserver: StreamObserver<Nai.DeleteImageResponse>
-    ) {
-        GlobalScope.launch {
-            try {
-                val userId = Context.current().userId
+    override suspend fun addImage(request: AddImageRequest): AddImageResponse {
 
-                val (message, success) = RemoveImage(
-                    userId, Uuid.parse(request.imageId), Config.connectionProvider,  // DB connection provider
-                    Config.cloudberry           // CloudberryStorageClient
+        return handleRequest {
+            val userId = Context.current().userId
+            val metadata: ContentMetadata? = request.pMetadata
+            val imageChunks = ByteArrayOutputStream()
+            request.pChunkData.writeTo(imageChunks)
+
+            metadata ?: throw MetadataNotFoundException()
+            val imageExtension = ImageExtension.parse(metadata.pExtension)
+                ?: throw InvalidExtensionException(metadata.pExtension)
+
+            val image = AddImage(
+                userId,
+                galleryIdentifier = Uuid.parse(metadata.pGalleryId),
+                imageDescription = metadata.pDescription,
+                imageExtension = imageExtension,
+                imageContent = imageChunks.toByteArray(),
+                getNewConnection = Config.connectionProvider,
+                cloudberry = Config.cloudberry
+            ).execute()
+
+            addImageResponse {
+                pImageId = image.id.toString()
+            }
+        }
+    }
+
+    override suspend fun deleteImage(request: DeleteImageRequest): Empty {
+        return handleRequest {
+            val userId = Context.current().userId
+            runBlocking {
+                RemoveImage(
+                    userId, Uuid.parse(request.pImageId), Config.connectionProvider,
+                    Config.cloudberry
                 ).execute()
 
-                val response =
-                    Nai.DeleteImageResponse.newBuilder().setStatusMessage(message).setSuccess(success).build()
-
-                responseObserver.onNext(response)
-                responseObserver.onCompleted()
-
-            } catch (e: Exception) {
-                val errorMessage = "Failed to delete image: ${e.message}"
-                KotlinLogging.logger {}.error(e) { errorMessage }
-
-                val errorResponse =
-                    Nai.DeleteImageResponse.newBuilder().setStatusMessage(errorMessage).setSuccess(false).build()
-
-                responseObserver.onNext(errorResponse)
-                responseObserver.onCompleted()
+                empty { }
             }
         }
     }
 
-    override fun getImageContent(
-        request: Nai.GetImageContentRequest?, responseObserver: StreamObserver<Nai.GetImageContentResponse?>?
-    ) {
-        if (request == null) {
-            responseObserver?.onError(IllegalArgumentException("Request cannot be null"))
-            return
-        }
+    override suspend fun getImageContent(request: GetImageContentRequest): GetImageContentResponse {
+        return handleRequest {
+            val imageId = request.pImageId
+            val userId = Context.current().userId
 
-        val imageId = request.imageId
-        val userId = Context.current().userId
+            val imageIdentifier = Uuid.parse(imageId)
 
-        if (imageId.isEmpty()) {
-            responseObserver?.onError(IllegalArgumentException("Image ID cannot be empty"))
-            return
-        }
+            runBlocking {
+                val inputStream = GetImageContent(userId, imageIdentifier, Config.connectionProvider).execute()
 
-        val imageIdentifier = Uuid.parse(imageId)
-
-        GlobalScope.launch {
-            withContext(Dispatchers.IO) {
-                try {
-                    val getImageContent = GetImageContent(userId, imageIdentifier, Config.connectionProvider)
-                    val inputStream = getImageContent.execute()
-
-                    val response = Nai.GetImageContentResponse.newBuilder()
-                        .setChunkData(com.google.protobuf.ByteString.readFrom(inputStream)).build()
-
-                    responseObserver?.onNext(response)
-                    responseObserver?.onCompleted()
-                } catch (e: Exception) {
-                    responseObserver?.onError(e)
+                getImageContentResponse {
+                    pChunkData = ByteString.readFrom(inputStream)
                 }
             }
         }
     }
 
-    @OptIn(DelicateCoroutinesApi::class)
-    override fun searchImage(
-        request: Nai.SearchImageRequest?, responseObserver: StreamObserver<Nai.SearchImageResponse?>?
-    ) {
-        if (request == null) {
-            responseObserver?.onError(IllegalArgumentException("Request cannot be null"))
-            return
-        }
+    override suspend fun searchImages(request: SearchImagesRequest): SearchImagesResponse {
+        return handleRequest {
+            val userId = Context.current().userId
+            val query = request.pQuery
+            val galleryId = request.pGalleryId
+            val parameters = request.pParametersMap.mapKeys { Parameter.valueOf(it.key) }
+            val count = request.pCount
 
-        val userId = Context.current().userId
-        val query = request.query
-        val galleryId = request.galleryId
-        val parameters = request.parametersMap.mapKeys { Parameter.valueOf(it.key) }
-        val count = request.count
+            require(count > 0) { "count must be greater than 0" }
 
-        GlobalScope.launch {
-            withContext(Dispatchers.IO) {
-                try {
-                    val searchImages = SearchImages(
+            runBlocking {
+                withContext(Dispatchers.IO) {
+                    val images = SearchImages(
                         userId,
                         query,
                         Uuid.parse(galleryId),
@@ -189,22 +135,48 @@ class GalleryServiceImpl : GalleryServiceGrpc.GalleryServiceImplBase() {
                         count,
                         Config.connectionProvider,
                         Config.cloudberry
-                    )
-                    val images = searchImages.execute()
+                    ).execute()
 
-                    val responseBuilder = Nai.SearchImageResponse.newBuilder()
-                    images.forEach { image ->
-                        val imageResponse = Nai.Image.newBuilder().setImageId(image.id.toString())
-                            .setGalleryId(image.galleryId.toString()).setDescription(image.description).build()
-                        responseBuilder.addContent(imageResponse)
+                    val imagesResponse = images.map {
+                        image {
+                            pImageId = it.id.toString()
+                            pGalleryId = it.galleryId.toString()
+                            pDescription = it.description
+                        }
                     }
-
-                    responseObserver?.onNext(responseBuilder.build())
-                    responseObserver?.onCompleted()
-                } catch (e: Exception) {
-                    responseObserver?.onError(e)
+                    searchImagesResponse {
+                        pContent.addAll(imagesResponse)
+                    }
                 }
             }
+        }
+    }
+
+
+    private fun <T> handleRequest(action: () -> T): T {
+        return try {
+            action()
+        } catch (e: IllegalArgumentException) {
+            logger.error(e) { "${e.message}" }
+            throw Status.INVALID_ARGUMENT.withDescription(e.message).asRuntimeException()
+        } catch (e: MetadataNotFoundException) {
+            logger.error(e) { "${e.message}" }
+            throw Status.INVALID_ARGUMENT.withDescription(e.message).asRuntimeException()
+        } catch (e: EntityNotFoundException) {
+            logger.error(e) { "${e.message}" }
+            throw Status.NOT_FOUND.withDescription(e.message).asRuntimeException()
+        } catch (e: InvalidExtensionException) {
+            logger.error(e) { "${e.message}" }
+            throw Status.INVALID_ARGUMENT.withDescription(e.message).asRuntimeException()
+        } catch (e: EntityAlreadyExistsException) {
+            logger.error { "${e.message}" }
+            throw Status.ALREADY_EXISTS.withDescription(e.message).asRuntimeException()
+        } catch (e: IllegalArgumentException) {
+            logger.error { "${e.message}" }
+            throw Status.INVALID_ARGUMENT.withDescription(e.message).asRuntimeException()
+        } catch (exception: Throwable) {
+            logger.error(exception) { "Unhandled exception" }
+            throw Status.INTERNAL.withDescription("Internal server error").asRuntimeException()
         }
     }
 }

@@ -3,106 +3,98 @@ syntax = "proto3";
 package nai;
 
 message CreateGalleryRequest {
-  string galleryName = 1;
+  string p_galleryName = 1;
 }
 
 message CreateGalleryResponse {
-  string galleryId = 1;
+  string p_galleryId = 1;
 }
 
 message GalleryPreview {
-  string galleryId = 1;
-  string galleryName = 2;
-  repeated string preview = 3;
+  string p_galleryId = 1;
+  string p_galleryName = 2;
+  repeated string p_preview = 3; //only 4 image
 }
 
 message GetGalleriesRequest {
 }
 
 message GetGalleriesResponse {
-  repeated GalleryPreview content = 1;
+  repeated GalleryPreview p_content = 1;
 }
 
 message DeleteGalleryRequest {
-  string galleryId = 1;
-}
-
-message DeleteGalleryResponse {
-  string status_message = 1;
-  bool success = 2;
+  string p_galleryId = 1;
 }
 
 message GetGalleryImagesRequest {
-  string galleryId = 1;
-  int32 size = 2;
-  int32 offset = 3;
+  string p_galleryId = 1;
+  int32 p_size = 2;
+  int32 p_offset = 3;
 }
 
 message Image {
-  string imageId = 1;
-  string galleryId = 2;
-  string description = 3;
+  string p_imageId = 1;
+  string p_galleryId = 2;
+  string p_description = 3;
 }
 
 message GetGalleryImagesResponse {
-  repeated Image content = 1;
-  int64 total = 2;
+  repeated Image p_content = 1;
+  int64 p_total = 2;
 }
 
 message ContentMetadata {
-  string galleryId = 1;
-  string description = 2;
-  string extension = 3;
+  string p_galleryId = 1;
+  string p_description = 2;
+  string p_extension = 3;
 }
 
 message AddImageRequest {
-  ContentMetadata metadata = 1;
-  bytes chunk_data = 2;
+  ContentMetadata p_metadata = 1;
+  bytes p_chunk_data = 2;
 }
 
 message AddImageResponse {
-  string imageId = 1;
+  string p_imageId = 1;
 }
 
 message DeleteImageRequest {
-  string imageId = 1;
-}
-
-message DeleteImageResponse {
-  string status_message = 1;
-  bool success = 2;
+  string p_imageId = 1;
 }
 
 message GetImageContentRequest {
-  string imageId = 1;
+  string p_imageId = 1;
 }
 
 message GetImageContentResponse {
-  bytes chunk_data = 1;
+  bytes p_chunk_data = 1;
 }
 
-message SearchImageRequest {
-  string query = 1;
-  string galleryId = 2;
-  map<string, double> parameters = 3;
-  int64 count = 4;
+message SearchImagesRequest {
+  string p_query = 1;
+  string p_galleryId = 2;
+  map<string, double> p_parameters = 3;
+  int64 p_count = 4;
 }
 
-message SearchImageResponse {
-  repeated Image content = 1;
+message SearchImagesResponse {
+  repeated Image p_content = 1;
 }
+
+message Empty {}
 
 // Services
 service MainService {
   rpc CreateGallery(CreateGalleryRequest) returns (CreateGalleryResponse);
   rpc GetGalleries(GetGalleriesRequest) returns (GetGalleriesResponse); // No request parameters
-  rpc DeleteGallery(DeleteGalleryRequest) returns (DeleteGalleryResponse);
+  rpc DeleteGallery(DeleteGalleryRequest) returns (Empty);
 }
 
 service GalleryService {
   rpc GetGalleryImages(GetGalleryImagesRequest) returns (GetGalleryImagesResponse);
-  rpc AddImage(stream AddImageRequest) returns (AddImageResponse);
-  rpc DeleteImage(DeleteImageRequest) returns (DeleteImageResponse);
-  rpc GetImageContent(GetImageContentRequest) returns (stream GetImageContentResponse);
-  rpc SearchImage(SearchImageRequest) returns (SearchImageResponse);
+  rpc AddImage(AddImageRequest) returns (AddImageResponse);
+  rpc DeleteImage(DeleteImageRequest) returns (Empty);
+  rpc GetImageContent(GetImageContentRequest) returns (GetImageContentResponse);
+  rpc SearchImages(SearchImagesRequest) returns (SearchImagesResponse);
 }

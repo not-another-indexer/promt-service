@@ -16,42 +16,32 @@ import kotlin.uuid.Uuid
 import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid
 
+@OptIn(ExperimentalUuidApi::class)
 class GetGalleries(
     private val userId: Long,
-    private val userIdentifier: Long,
     //
     private val getNewConnection: () -> Connection,
 ) {
     fun execute(): Map<Gallery, List<Uuid>> {
-        println(userId)
+
         Database.connect(getNewConnection)
-        /*transaction {
-            SchemaUtils.create(Images)
-            SchemaUtils.create(Galleries)
-            SchemaUtils.create(Users)
-            Users.insert {
-                it[id] = 0
-                it[username] = "username"
-                it[displayName] = "displayName"
-            }
-        }*/
 
         return transaction {
             addLogger(StdOutSqlLogger)
 
             Galleries.selectAll()
-                .where { Galleries.userId eq userIdentifier }
+                .where { Galleries.userId eq userId }
                 .map { gallery ->
                     Gallery(
                         id = gallery[Galleries.id].toKotlinUuid(),
                         name = gallery[Galleries.name]
                     )
-                }.map { gallery ->
-                    gallery to Images.selectAll()
+                }.associateWith { gallery ->
+                    Images.selectAll()
                         .where { Images.galleryUuid eq gallery.id.toJavaUuid() }
                         .limit(4)
                         .map { image -> image[Images.id].toKotlinUuid() }
-                }.toMap()
+                }
         }
     }
 }

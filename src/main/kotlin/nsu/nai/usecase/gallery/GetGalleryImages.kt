@@ -2,14 +2,11 @@
 
 package nsu.nai.usecase.gallery
 
-import io.grpc.Context
+import nsu.nai.core.table.gallery.Galleries
 import nsu.nai.core.table.image.Image
 import nsu.nai.core.table.image.Images
-import nsu.nai.interceptor.AuthInterceptor
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.StdOutSqlLogger
-import org.jetbrains.exposed.sql.addLogger
-import org.jetbrains.exposed.sql.selectAll
+import nsu.nai.exception.EntityNotFoundException
+import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.sql.Connection
 import kotlin.uuid.ExperimentalUuidApi
@@ -26,17 +23,18 @@ class GetGalleryImages(
     private val getNewConnection: () -> Connection,
 ) {
     fun execute(): Pair<List<Image>, Long> {
-        println(userId)
-        val user = AuthInterceptor.USER_CONTEXT_KEY.get(Context.current())
-
         Database.connect(getNewConnection)
 
         return transaction {
             addLogger(StdOutSqlLogger)
 
-            val images = Images.selectAll().where { Images.galleryUuid eq galleryIdentifier.toJavaUuid() }
+            requireGalleryExist(userId, galleryIdentifier)
+
+            val images = Images.innerJoin(Galleries).selectAll()
+                .where { (Images.galleryUuid eq galleryIdentifier.toJavaUuid()) and (Galleries.userId eq userId) }
+                .orderBy(Images.id)
                 .offset(offset)
-                .fetchSize(size)
+                .limit(size)
                 .map { image ->
                     Image(
                         id = image[Images.id].toKotlinUuid(),
@@ -47,6 +45,15 @@ class GetGalleryImages(
             val total = Images.selectAll().count()
 
             images to total
+        }
+    }
+
+    private fun requireGalleryExist(userId: Long, galleryIdentifier: Uuid) {
+        val exist = Galleries.selectAll()
+            .where { (Galleries.userId eq userId) and (Galleries.id eq galleryIdentifier.toJavaUuid()) }
+            .any()
+        if (!exist) {
+            throw EntityNotFoundException("gallery")
         }
     }
 }

@@ -11,7 +11,8 @@ object JwtTokenFactory {
     private val algorithm = Algorithm.HMAC256(SECRET)
     private val logger = KotlinLogging.logger {}
     private const val ISSUER = "auth-service"
-    private const val REFRESH_TOKEN_EXPIRATION: Long = 1000 * 60 * 15 // 15 min expiration
+    //TODO не забыть убрать
+    private const val REFRESH_TOKEN_EXPIRATION: Long = 1000 * 60 * 15*1000 // 15 min expiration
     private const val ACCESS_TOKEN_EXPIRATION: Long = 1000 * 60 * 60 * 24 * 7 // 7 days expiration
 
     /**
