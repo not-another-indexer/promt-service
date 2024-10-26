@@ -11,12 +11,12 @@ service CloudberryStorage {
 }
 
 message InitBucketRequest {
-    string p_bucketUuid = 1;
+    string p_bucket_UUID = 1;
 }
 
 message FindRequest {
     string p_query = 1;
-    string p_bucket_uuid = 2;
+    string p_bucket_UUID = 2;
     repeated Coefficient p_parameters = 3;
     int64 p_count = 4;
 }
@@ -26,7 +26,7 @@ message FindResponse {
 }
 
 message FindResponseEntry {
-    string p_content_uuid = 1;
+    string p_content_UUID = 1;
     repeated Metric p_metrics = 2;
 }
 
@@ -50,12 +50,12 @@ enum Parameter {
 }
 
 message DestroyBucketRequest {
-    string p_bucket_uuid = 1;
+    string p_bucket_UUID = 1;
 }
 
 message ContentMetadata {
-    string p_content_uuid = 1;
-    string p_bucket_uuid = 2;
+    string p_content_UUID = 1;
+    string p_bucket_UUID = 2;
     string p_extension = 3;
     string p_description = 4;
 }
@@ -66,8 +66,8 @@ message PutEntryRequest {
 }
 
 message RemoveEntryRequest {
-    string p_content_uuid = 1;
-    string p_bucket_uuid = 2;
+    string p_content_UUID = 1;
+    string p_bucket_UUID = 2;
 }
 
 message Empty {}

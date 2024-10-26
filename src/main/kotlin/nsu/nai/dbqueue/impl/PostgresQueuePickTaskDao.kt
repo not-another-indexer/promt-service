@@ -1,4 +1,4 @@
-package nsu.nai.dbqueue
+package nsu.nai.dbqueue.impl
 
 import org.springframework.jdbc.core.JdbcOperations
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource
@@ -9,9 +9,7 @@ import ru.yoomoney.tech.dbqueue.dao.QueuePickTaskDao
 import ru.yoomoney.tech.dbqueue.settings.FailRetryType
 import ru.yoomoney.tech.dbqueue.settings.FailureSettings
 import ru.yoomoney.tech.dbqueue.settings.QueueLocation
-import java.sql.PreparedStatement
 import java.sql.ResultSet
-import java.sql.SQLException
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
@@ -24,7 +22,8 @@ class PostgresQueuePickTaskDao(
     private val jdbcTemplate = NamedParameterJdbcTemplate(jdbcTemplate)
 
     private var pickTaskSql: String = createPickTaskSql(queueLocation, failureSettings)
-    private var pickTaskSqlPlaceholders: MapSqlParameterSource = createSqlParameterSource(queueLocation, failureSettings)
+    private var pickTaskSqlPlaceholders: MapSqlParameterSource =
+        createSqlParameterSource(queueLocation, failureSettings)
 
     init {
         failureSettings.registerObserver { _, newValue ->
@@ -72,7 +71,12 @@ class PostgresQueuePickTaskDao(
                 FOR UPDATE SKIP LOCKED
             )
             UPDATE ${location.tableName} q
-            SET ${queueTableSchema.nextProcessAtField} = ${getNextProcessTimeSql(failureSettings.retryType, queueTableSchema)},
+            SET ${queueTableSchema.nextProcessAtField} = ${
+            getNextProcessTimeSql(
+                failureSettings.retryType,
+                queueTableSchema
+            )
+        },
                 ${queueTableSchema.attemptField} = ${queueTableSchema.attemptField} + 1,
                 ${queueTableSchema.totalAttemptField} = ${queueTableSchema.totalAttemptField} + 1
             FROM cte
@@ -87,7 +91,10 @@ class PostgresQueuePickTaskDao(
         """.trimIndent()
     }
 
-    private fun createSqlParameterSource(location: QueueLocation, failureSettings: FailureSettings): MapSqlParameterSource {
+    private fun createSqlParameterSource(
+        location: QueueLocation,
+        failureSettings: FailureSettings
+    ): MapSqlParameterSource {
         return MapSqlParameterSource().apply {
             addValue("queueName", location.queueId.asString())
             addValue("retryInterval", failureSettings.retryInterval.seconds)

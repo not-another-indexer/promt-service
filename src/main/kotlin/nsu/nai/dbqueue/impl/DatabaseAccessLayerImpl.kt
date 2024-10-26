@@ -1,4 +1,4 @@
-package nsu.nai.dbqueue
+package nsu.nai.dbqueue.impl
 
 import org.springframework.jdbc.core.JdbcOperations
 import org.springframework.transaction.TransactionStatus
