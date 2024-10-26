@@ -26,7 +26,7 @@ class CloudberryStorageClient(channel: ManagedChannel) {
      */
     suspend fun initBucket(bucketUuid: Uuid): Empty = stub.initBucket(
         initBucketRequest {
-            this.bucketUuid = bucketUuid.toString()
+            this.pBucketUuid = bucketUuid.toString()
         }
     )
 
@@ -37,7 +37,7 @@ class CloudberryStorageClient(channel: ManagedChannel) {
      */
     suspend fun destroyBucket(bucketUuid: Uuid): Empty = stub.destroyBucket(
         destroyBucketRequest {
-            this.bucketUuid = bucketUuid.toString()
+            this.pBucketUuid = bucketUuid.toString()
         }
     )
 
@@ -56,17 +56,17 @@ class CloudberryStorageClient(channel: ManagedChannel) {
         count: Long
     ): FindResponse = stub.find(
         findRequest {
-            this.query = query
-            this.bucketUuid = bucketUuid.toString()
-            this.parameters.addAll(
+            this.pQuery = query
+            this.pBucketUuid = bucketUuid.toString()
+            this.pParameters.addAll(
                 parameters.map { (key, value) ->
                     coefficient {
-                        this.parameter = CoefficientType.valueOf(key.name)
-                        this.value = value
+                        this.pParameter = CoefficientType.valueOf(key.name)
+                        this.pValue = value
                     }
                 }
             )
-            this.count = count
+            this.pCount = count
         }
     )
 
@@ -78,13 +78,13 @@ class CloudberryStorageClient(channel: ManagedChannel) {
         content: ByteArray
     ): Empty = stub.putEntry(
         putEntryRequest {
-            metadata = contentMetadata {
-                this.contentUuid = contentUuid.toString()
-                this.bucketUuid = bucketUuid.toString()
-                this.extension = extension
-                this.description = description
+            pMetadata = contentMetadata {
+                this.pContentUuid = contentUuid.toString()
+                this.pBucketUuid = bucketUuid.toString()
+                this.pExtension = extension
+                this.pDescription = description
             }
-            data = ByteString.copyFrom(content)
+            pData = ByteString.copyFrom(content)
         }
     )
 
@@ -96,8 +96,8 @@ class CloudberryStorageClient(channel: ManagedChannel) {
      */
     suspend fun removeEntry(contentUuid: Uuid, bucketUuid: Uuid): Empty = stub.removeEntry(
         removeEntryRequest {
-            this.contentUuid = contentUuid.toString()
-            this.bucketUuid = bucketUuid.toString()
+            this.pContentUuid = contentUuid.toString()
+            this.pBucketUuid = bucketUuid.toString()
         }
     )
 }

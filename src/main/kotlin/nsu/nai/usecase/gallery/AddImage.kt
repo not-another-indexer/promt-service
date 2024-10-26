@@ -3,17 +3,16 @@
 package nsu.nai.usecase.gallery
 
 import io.github.oshai.kotlinlogging.KotlinLogging.logger
-import io.grpc.Context
 import io.grpc.Status
 import io.grpc.StatusRuntimeException
 import nsu.client.CloudberryStorageClient
+import nsu.nai.core.table.gallery.Galleries
 import nsu.nai.core.table.image.Image
+import nsu.nai.core.table.image.ImageExtension
 import nsu.nai.core.table.image.Images
-import nsu.nai.interceptor.AuthInterceptor
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.StdOutSqlLogger
-import org.jetbrains.exposed.sql.addLogger
-import org.jetbrains.exposed.sql.insert
+import nsu.nai.exception.EntityNotFoundException
+import nsu.nai.exception.ImageUploadException
+import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.api.ExposedBlob
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.sql.Connection
@@ -26,7 +25,7 @@ class AddImage(
     private val userId: Long,
     private val galleryIdentifier: Uuid,
     private val imageDescription: String,
-    private val imageExtension: String,
+    private val imageExtension: ImageExtension,
     private val imageContent: ByteArray,
     //
     private val getNewConnection: () -> Connection,
@@ -34,14 +33,13 @@ class AddImage(
 ) {
     private val logger = logger {}
 
-    suspend fun execute(): Image {
-        println(userId)
-        val user = AuthInterceptor.USER_CONTEXT_KEY.get(Context.current())
-
+    fun execute(): Image {
         Database.connect(getNewConnection)
 
         val newImageId = transaction {
             addLogger(StdOutSqlLogger)
+
+            requireGalleryExist(userId, galleryIdentifier)
 
             Images.insert {
                 it[galleryUuid] = galleryIdentifier.toJavaUuid()
@@ -50,14 +48,15 @@ class AddImage(
             } get Images.id
         }
 
+        //TODO Надо тренироваться
         try {
-            val response = cloudberry.putEntry(
-                contentUuid = newImageId.toKotlinUuid(),
-                bucketUuid = galleryIdentifier,
-                extension = imageExtension,
-                description = imageDescription,
-                content = imageContent,
-            )
+//            val response = cloudberry.putEntry(
+//                contentUuid = newImageId.toKotlinUuid(),
+//                bucketUuid = galleryIdentifier,
+//                extension = imageExtension,
+//                description = imageDescription,
+//                content = imageContent,
+//            )
             // Обработка успешного ответа
             logger.info { "successfully uploaded image with id $newImageId" }
         } catch (e: StatusRuntimeException) {
@@ -69,14 +68,17 @@ class AddImage(
                     logger.error { "Bucket or content not found" }
                     throw RuntimeException("Bucket or content not found")
                 }
+
                 Status.Code.PERMISSION_DENIED -> {
                     logger.error { "Permission denied" }
                     throw ImageUploadException("Permission denied")
                 }
+
                 Status.Code.UNAVAILABLE -> {
                     logger.error { "Service unavailable" }
                     throw ImageUploadException("Service is temporarily unavailable, please try again later")
                 }
+
                 else -> {
                     logger.error { "Unknown error occurred: ${e.status}" }
                     throw ImageUploadException("An unknown error occurred")
@@ -91,5 +93,12 @@ class AddImage(
         )
     }
 
-    class ImageUploadException(message: String) : Exception(message)
+    private fun requireGalleryExist(userId: Long, galleryIdentifier: Uuid) {
+        val exist = Galleries.selectAll()
+            .where { (Galleries.userId eq userId) and (Galleries.id eq galleryIdentifier.toJavaUuid()) }
+            .any()
+        if (!exist) {
+            throw EntityNotFoundException("gallery")
+        }
+    }
 }
