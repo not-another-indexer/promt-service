@@ -56,10 +56,8 @@ message ContentMetadata {
 }
 
 message AddImageRequest {
-  oneof payload {
-    ContentMetadata metadata = 1;
-    bytes chunk_data = 2;
-  }
+  ContentMetadata metadata = 1;
+  bytes chunk_data = 2;
 }
 
 message AddImageResponse {

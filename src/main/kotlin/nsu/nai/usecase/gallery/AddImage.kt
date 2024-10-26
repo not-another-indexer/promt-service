@@ -4,6 +4,7 @@ package nsu.nai.usecase.gallery
 
 import io.github.oshai.kotlinlogging.KotlinLogging.logger
 import io.grpc.Context
+import io.grpc.Status
 import io.grpc.StatusRuntimeException
 import nsu.client.CloudberryStorageClient
 import nsu.nai.core.table.image.Image
@@ -15,7 +16,6 @@ import org.jetbrains.exposed.sql.addLogger
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.statements.api.ExposedBlob
 import org.jetbrains.exposed.sql.transactions.transaction
-import java.io.InputStream
 import java.sql.Connection
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -27,7 +27,7 @@ class AddImage(
     private val galleryIdentifier: Uuid,
     private val imageDescription: String,
     private val imageExtension: String,
-    private val imageContent: InputStream,
+    private val imageContent: ByteArray,
     //
     private val getNewConnection: () -> Connection,
     private val cloudberry: CloudberryStorageClient
@@ -58,15 +58,31 @@ class AddImage(
                 description = imageDescription,
                 content = imageContent,
             )
+            // Обработка успешного ответа
+            logger.info { "successfully uploaded image with id $newImageId" }
         } catch (e: StatusRuntimeException) {
-            logger.error { "image adding failed with status ${e.status}, with message ${e.message}" }
-            throw e
-        }
+            logger.error { "gRPC call failed: ${e.status}, message: ${e.message}" }
 
-        // TODO(e.shelbogashev): разобраться, как в grpc котлин обрабатывать ошибки (по-идее, putEntry должен выбросить throwable, но я хз)
-//        if (!response.success) {
-//            logger.error { "image addition failed with message ${response.statusMessage}" }
-//        }
+            // Обрабатываем различные статусы
+            when (e.status.code) {
+                Status.Code.NOT_FOUND -> {
+                    logger.error { "Bucket or content not found" }
+                    throw RuntimeException("Bucket or content not found")
+                }
+                Status.Code.PERMISSION_DENIED -> {
+                    logger.error { "Permission denied" }
+                    throw ImageUploadException("Permission denied")
+                }
+                Status.Code.UNAVAILABLE -> {
+                    logger.error { "Service unavailable" }
+                    throw ImageUploadException("Service is temporarily unavailable, please try again later")
+                }
+                else -> {
+                    logger.error { "Unknown error occurred: ${e.status}" }
+                    throw ImageUploadException("An unknown error occurred")
+                }
+            }
+        }
 
         return Image(
             id = newImageId.toKotlinUuid(),
@@ -74,4 +90,6 @@ class AddImage(
             description = imageDescription
         )
     }
+
+    class ImageUploadException(message: String) : Exception(message)
 }
