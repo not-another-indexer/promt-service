@@ -38,9 +38,9 @@ class AuthServiceImpl(
     override suspend fun register(request: RegisterRequest): Empty {
         return handleRequest {
             RegisterUser(
-                request.username,
-                request.displayName,
-                request.rawPassword,
+                request.pUsername,
+                request.pDisplayName,
+                request.pRawPassword,
                 connectionProvider
             ).execute()
 
@@ -58,16 +58,16 @@ class AuthServiceImpl(
     override suspend fun signIn(request: SignInRequest): SignInResponse {
         return handleRequest {
             val (user, tokens) = LoginUser(
-                request.username,
-                request.rawPassword,
+                request.pUsername,
+                request.pRawPassword,
                 connectionProvider
             ).execute()
 
             signInResponse {
-                username = request.username
-                displayName = user.displayName
-                accessToken = tokens.first
-                refreshToken = tokens.second
+                pUsername = request.pUsername
+                pDisplayName = user.displayName
+                pAccessToken = tokens.first
+                pRefreshToken = tokens.second
             }
         }
     }
@@ -82,12 +82,12 @@ class AuthServiceImpl(
     override suspend fun refreshToken(request: RefreshTokenRequest): RefreshTokenResponse {
         return handleRequest {
             val generatedAccessToken = RefreshToken(
-                request.refreshToken,
+                request.pRefreshToken,
                 connectionProvider
             ).execute()
 
             refreshTokenResponse {
-                accessToken = generatedAccessToken
+                pAccessToken = generatedAccessToken
             }
         }
     }

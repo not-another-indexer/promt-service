@@ -1,31 +1,31 @@
 syntax = "proto3";
 
 message RegisterRequest {
-  string username = 1;
-  string displayName = 2;
-  string rawPassword = 3;
+  string p_username = 1;
+  string p_displayName = 2;
+  string p_rawPassword = 3;
 }
 
 message Empty {}
 
 message SignInRequest {
-  string username = 1;
-  string rawPassword = 2;
+  string p_username = 1;
+  string p_rawPassword = 2;
 }
 
 message SignInResponse {
-  string username = 1;
-  string displayName = 2;
-  string accessToken = 3;
-  string refreshToken = 4;
+  string p_username = 1;
+  string p_displayName = 2;
+  string p_accessToken = 3;
+  string p_refreshToken = 4;
 }
 
 message RefreshTokenRequest {
-  string refreshToken = 1;
+  string p_refreshToken = 1;
 }
 
 message RefreshTokenResponse {
-  string accessToken = 1;
+  string p_accessToken = 1;
 }
 
 service AuthService {
