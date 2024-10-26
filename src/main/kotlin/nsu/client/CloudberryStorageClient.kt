@@ -7,9 +7,7 @@ import cloudberry.CloudberryStorageOuterClass.Empty
 import cloudberry.CloudberryStorageOuterClass.FindResponse
 import com.google.protobuf.ByteString
 import io.grpc.ManagedChannel
-import kotlinx.coroutines.flow.flow
 import nsu.nai.core.Parameter
-import java.io.InputStream
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import cloudberry.CloudberryStorageOuterClass.Parameter as CoefficientType
@@ -77,36 +75,16 @@ class CloudberryStorageClient(channel: ManagedChannel) {
         bucketUuid: Uuid,
         extension: String,
         description: String,
-        content: InputStream
+        content: ByteArray
     ): Empty = stub.putEntry(
-        flow {
-            // Сначала отправляем метаданные записи
-            emit(
-                putEntryRequest {
-                    metadata = contentMetadata {
-                        this.contentUuid = contentUuid.toString()
-                        this.bucketUuid = bucketUuid.toString()
-                        this.extension = extension
-                        this.description = description
-                    }
-                }
-            )
-
-            // Буфер для чтения данных по частям (64 КБ)
-            val buffer = ByteArray(64 * 1024)
-
-            generateSequence { content.read(buffer).takeIf { it != -1 } }
-                .forEach { bytesRead ->
-                    emit(
-                        putEntryRequest {
-                            chunkData = ByteString.copyFrom(
-                                buffer,
-                                0,
-                                bytesRead
-                            )
-                        }
-                    )
-                }
+        putEntryRequest {
+            metadata = contentMetadata {
+                this.contentUuid = contentUuid.toString()
+                this.bucketUuid = bucketUuid.toString()
+                this.extension = extension
+                this.description = description
+            }
+            data = ByteString.copyFrom(content)
         }
     )
 
