@@ -1,23 +1,20 @@
-@file:OptIn(ExperimentalUuidApi::class, ExperimentalUuidApi::class)
-
 package nsu.nai.usecase.gallery
 
 import io.github.oshai.kotlinlogging.KotlinLogging.logger
 import io.grpc.StatusRuntimeException
+import kotlinx.coroutines.runBlocking
 import nsu.client.CloudberryStorageClient
 import nsu.nai.core.table.gallery.Galleries
 import nsu.nai.core.table.image.Images
-import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.StdOutSqlLogger
-import org.jetbrains.exposed.sql.addLogger
-import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.sql.Connection
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import kotlin.uuid.toJavaUuid
 
+@OptIn(ExperimentalUuidApi::class)
 class RemoveGallery(
     private val userId: Long,
     private val galleryIdentifier: Uuid,
@@ -27,19 +24,25 @@ class RemoveGallery(
 ) {
     private val logger = logger {}
 
-    suspend fun execute() {
-        println(userId)
+    fun execute() {
         Database.connect(getNewConnection)
 
         transaction {
             addLogger(StdOutSqlLogger)
+
+            require(isGalleryExist(userId, galleryIdentifier)) {
+                "No gallery results found"
+            }
 
             Images.deleteWhere { galleryUuid eq galleryIdentifier.toJavaUuid() }
             Galleries.deleteWhere { id eq galleryIdentifier.toJavaUuid() }
         }
 
         try {
-            val response = cloudberry.destroyBucket(galleryIdentifier)
+            runBlocking {
+                //TODO Миха обязательно справится
+//            val response = cloudberry.destroyBucket(galleryIdentifier)
+            }
         } catch (e: StatusRuntimeException) {
             logger.error { "gallery removal failed with status ${e.status}, with message ${e.message}" }
             throw e
@@ -49,5 +52,16 @@ class RemoveGallery(
 //        if (!response.success) {
 //            logger.error { "bucket destroy failed with message ${response.statusMessage}" }
 //        }
+    }
+
+    private fun isGalleryExist(userId: Long, galleryIdentifier: Uuid): Boolean {
+        return try {
+            Galleries.selectAll()
+                .where { (Galleries.userId eq userId) and (Galleries.id eq galleryIdentifier.toJavaUuid()) }
+                .single()
+            true
+        } catch (e: Exception) {
+            false
+        }
     }
 }
