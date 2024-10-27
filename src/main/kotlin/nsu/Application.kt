@@ -24,7 +24,7 @@ fun main() {
     // GRPC
     val authInterceptor = AuthInterceptor()
 
-    val server: Server = ServerBuilder.forPort(8080)
+    val server: Server = ServerBuilder.forPort(Config.grpcPort)
         .addService(AuthServiceImpl(Config.connectionProvider))
         .addService(ServerInterceptors.intercept(GalleryServiceImpl(producers), authInterceptor))
         .addService(ServerInterceptors.intercept(MainServiceImpl(producers), authInterceptor))
@@ -42,16 +42,19 @@ fun main() {
 }
 
 object Config {
+    val dbUrl = System.getenv("DB_URL") ?: "jdbc:postgresql://localhost:5432/nai_db"
+    val dbUser = System.getenv("DB_USER") ?: "nai_user"
+    val dbPassword = System.getenv("DB_PASSWORD") ?: "nai_password"
+    val grpcPort = System.getenv("GRPC_PORT")?.toInt() ?: 8080
+    private val cloudberryHost = System.getenv("CLOUDBERRY_HOST") ?: "localhost"
+    private val cloudberryPort = System.getenv("CLOUDBERRY_PORT")?.toInt() ?: 50051
+
     val connectionProvider: () -> Connection = {
-        DriverManager.getConnection(
-            "jdbc:postgresql://localhost:5432/nai_db",
-            "nai_user",
-            "nai_password"
-        )
+        DriverManager.getConnection(dbUrl, dbUser, dbPassword)
     }
 
     private val managedChannel: ManagedChannel = ManagedChannelBuilder
-        .forAddress("localhost", 50051)
+        .forAddress(cloudberryHost, cloudberryPort)
         .usePlaintext() // unsecured communication
         .build()
 

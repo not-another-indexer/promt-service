@@ -2,12 +2,13 @@ package nsu.nai.dbqueue
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
+import nsu.Config.dbPassword
+import nsu.Config.dbUrl
+import nsu.Config.dbUser
 import nsu.nai.dbqueue.impl.JdbcDatabaseAccessLayer
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.datasource.DataSourceTransactionManager
 import org.springframework.transaction.support.TransactionTemplate
-import ru.yoomoney.tech.dbqueue.api.EnqueueParams
-import ru.yoomoney.tech.dbqueue.api.EnqueueResult
 import ru.yoomoney.tech.dbqueue.api.QueueProducer
 import ru.yoomoney.tech.dbqueue.api.TaskPayloadTransformer
 import ru.yoomoney.tech.dbqueue.api.impl.MonitoringQueueProducer
@@ -20,15 +21,12 @@ import ru.yoomoney.tech.dbqueue.settings.*
 import java.time.Duration
 
 private const val CB_QUEUE = "cb_queue"
-private const val DATABASE_URL = "jdbc:postgresql://localhost:5432/nai_db"
-private const val DATABASE_USER = "nai_user"
-private const val DATABASE_PASSWORD = "nai_password"
 
 fun initDbQueue(): Producers {
     val dataSource = HikariDataSource(HikariConfig().apply {
-        jdbcUrl = DATABASE_URL
-        username = DATABASE_USER
-        password = DATABASE_PASSWORD
+        jdbcUrl = dbUrl
+        username = dbUser
+        password = dbPassword
         maximumPoolSize = 10
         minimumIdle = 5
         idleTimeout = 300
