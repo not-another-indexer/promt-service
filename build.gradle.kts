@@ -49,6 +49,10 @@ dependencies {
     implementation("org.postgresql:postgresql:${properties["postgres_version"]}")
     // testing grpc
     testImplementation("io.grpc:grpc-testing:${properties["grpc_java_version"]}")
+    // dbqueue
+    implementation("ru.yoomoney.tech:db-queue-core:15.1.0")
+    implementation("org.springframework:spring-jdbc:6.1.14")
+    implementation("com.zaxxer:HikariCP:5.0.1")
     // testing kotlin
     testImplementation(kotlin("test-junit"))
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:${properties["kotlin_version"]}")
