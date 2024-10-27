@@ -3,6 +3,16 @@ package nsu.nai.dbqueue
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.runBlocking
 import nsu.Config
+import nsu.nai.core.table.gallery.Galleries
+import nsu.nai.core.table.image.Image
+import nsu.nai.core.table.image.ImageEntity.Companion.toImageEntity
+import nsu.nai.core.table.image.Images
+import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import ru.yoomoney.tech.dbqueue.api.QueueConsumer
 import ru.yoomoney.tech.dbqueue.api.Task
 import ru.yoomoney.tech.dbqueue.api.TaskExecutionResult
@@ -11,70 +21,67 @@ import ru.yoomoney.tech.dbqueue.settings.QueueConfig
 import java.util.*
 
 class PutEntryConsumer(private val config: QueueConfig) : QueueConsumer<PutEntryPayload> {
+    private val logger = KotlinLogging.logger { }
+
     override fun execute(task: Task<PutEntryPayload>): TaskExecutionResult {
-        TODO("Not yet implemented")
+        val uuid = UUID.fromString(task.payload.get().imageUUID)
+        Database.connect(Config.connectionProvider)
+        val (entity, blob) = transaction {
+            val row = Images.selectAll().where { Images.id eq uuid }.single()
+            row.toImageEntity() to row[Images.content]
+        }
+        try {
+            runBlocking {
+                Config.cloudberry.putEntry(
+                    contentUUID = entity.id,
+                    bucketUUID = entity.galleryUUID,
+                    extension = entity.extension,
+                    description = entity.description,
+                    content = blob.bytes
+                )
+            }
+        } catch (e: Exception) {
+            logger.error(e) { "PutEntryConsumer error" }
+            return TaskExecutionResult.fail()
+        }
+
+        Database.connect(Config.connectionProvider)
+        transaction {
+            Images.update(
+                where = { Images.id eq uuid }
+            ) { it[status] = Image.Status.ACTIVE }
+        }
+
+        return TaskExecutionResult.finish()
     }
 
     override fun getQueueConfig(): QueueConfig = config
 
     override fun getPayloadTransformer(): TaskPayloadTransformer<PutEntryPayload> = PutEntryPayloadTransformer
-
-    //  //TODO Надо тренироваться
-    //        try {
-    ////            val response = cloudberry.putEntry(
-    ////                contentUUID = newImageId.toKotlinUUID(),
-    ////                bucketUUID = galleryIdentifier,
-    ////                extension = imageExtension,
-    ////                description = imageDescription,
-    ////                content = imageContent,
-    ////            )
-    //            // Обработка успешного ответа
-    //            logger.info { "successfully uploaded image with id $newImageId" }
-    //        } catch (e: StatusRuntimeException) {
-    //            logger.error { "gRPC call failed: ${e.status}, message: ${e.message}" }
-    //
-    //            // Обрабатываем различные статусы
-    //            when (e.status.code) {
-    //                Status.Code.NOT_FOUND -> {
-    //                    logger.error { "Bucket or content not found" }
-    //                    throw RuntimeException("Bucket or content not found")
-    //                }
-    //
-    //                Status.Code.PERMISSION_DENIED -> {
-    //                    logger.error { "Permission denied" }
-    //                    throw ImageUploadException("Permission denied")
-    //                }
-    //
-    //                Status.Code.UNAVAILABLE -> {
-    //                    logger.error { "Service unavailable" }
-    //                    throw ImageUploadException("Service is temporarily unavailable, please try again later")
-    //                }
-    //
-    //                else -> {
-    //                    logger.error { "Unknown error occurred: ${e.status}" }
-    //                    throw ImageUploadException("An unknown error occurred")
-    //                }
-    //            }
-    //        }
 }
 
 class RemoveEntryConsumer(private val config: QueueConfig) : QueueConsumer<RemoveEntryPayload> {
-    override fun execute(task: Task<RemoveEntryPayload>): TaskExecutionResult {
-        TODO("Not yet implemented")
-        // Images.innerJoin(Galleries).delete(Images) {
-        //                (Galleries.userId eq userId) and (Images.id eq imageIdentifier.toJavaUUID())
-        //            }
+    private val logger = KotlinLogging.logger { }
 
-        //         //TODO Коннект с Михой
-        //        try {
-        ////            val response = cloudberry.removeEntry(
-        ////                contentUUID = imageIdentifier,
-        ////                bucketUUID = galleryUUID.toKotlinUUID()
-        ////            )
-        //        } catch (e: StatusRuntimeException) {
-        //            logger.error { "image removal failed with status ${e.status}, with message ${e.message}" }
-        //            "image removal failed with status ${e.status}, with message ${e.message}" to false
-        //        }
+    override fun execute(task: Task<RemoveEntryPayload>): TaskExecutionResult {
+        val uuid = UUID.fromString(task.payload.get().imageUUID)
+        Database.connect(Config.connectionProvider)
+        val bucketUuid = transaction { Images.selectAll().where { Images.id eq uuid }.single()[Images.galleryUUID] }
+        try {
+            runBlocking {
+                Config.cloudberry.removeEntry(
+                    contentUUID = uuid,
+                    bucketUUID = bucketUuid,
+                )
+            }
+        } catch (e: Exception) {
+            logger.error(e) { "RemoveEntryConsumer error" }
+            return TaskExecutionResult.fail()
+        }
+
+        Database.connect(Config.connectionProvider)
+        transaction { Images.deleteWhere { id eq uuid } }
+        return TaskExecutionResult.finish()
     }
 
     override fun getQueueConfig(): QueueConfig = config
@@ -102,10 +109,23 @@ class InitIndexConsumer(private val config: QueueConfig) : QueueConsumer<InitInd
 }
 
 class DestroyIndexConsumer(private val config: QueueConfig) : QueueConsumer<DestroyIndexPayload> {
+    private val logger = KotlinLogging.logger { }
     override fun execute(task: Task<DestroyIndexPayload>): TaskExecutionResult {
-//        Images.deleteWhere { galleryUUID eq galleryIdentifier.toJavaUUID() }
-//        Galleries.deleteWhere { id eq galleryIdentifier.toJavaUUID() }
-        TODO()
+        try {
+            val uuid = UUID.fromString(task.payload.get().galleryUUID)
+            runBlocking {
+                Config.cloudberry.destroyBucket(uuid)
+            }
+            Database.connect(Config.connectionProvider)
+            transaction {
+                Images.deleteWhere { galleryUUID eq uuid }
+                Galleries.deleteWhere { id eq uuid }
+            }
+        } catch (e: Exception) {
+            logger.error(e) { "DestroyIndexConsumer error" }
+            return TaskExecutionResult.fail()
+        }
+        return TaskExecutionResult.finish()
     }
 
     override fun getQueueConfig(): QueueConfig = config

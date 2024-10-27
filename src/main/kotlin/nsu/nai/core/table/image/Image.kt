@@ -3,6 +3,7 @@ package nsu.nai.core.table.image
 import nsu.nai.core.table.gallery.Galleries
 import nsu.nai.core.table.image.Image.Status
 import org.jetbrains.exposed.sql.Column
+import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.statements.api.ExposedBlob
 import java.util.*
@@ -16,6 +17,26 @@ data class Image(
         IN_PROCESS,
         ACTIVE,
         FOR_REMOVAL
+    }
+}
+
+data class ImageEntity(
+    val id: UUID,
+    val galleryUUID: UUID,
+    val description: String,
+    val extension: String,
+    val status: Status,
+) {
+    companion object {
+        fun ResultRow.toImageEntity(): ImageEntity {
+            return ImageEntity(
+                id = this[Images.id],
+                galleryUUID = this[Images.galleryUUID],
+                description = this[Images.description],
+                extension = this[Images.extension],
+                status = this[Images.status],
+            )
+        }
     }
 }
 
