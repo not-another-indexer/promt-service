@@ -11,8 +11,8 @@ import java.util.*
 
 class GetImageContent(
     private val userId: Long,
-    private val imageId: UUID,
-    //
+    private val imageUuid: UUID,
+    // infrastructure
     private val getNewConnection: () -> Connection,
 ) {
     fun execute(): InputStream {
@@ -21,11 +21,12 @@ class GetImageContent(
         return transaction {
             addLogger(StdOutSqlLogger)
 
-            Images.innerJoin(Galleries) { Galleries.userId eq userId }.selectAll()
-                .where { Images.id eq imageId }
+            Images.innerJoin(Galleries)
+                .selectAll()
+                .where { (Images.id eq imageUuid) and (Galleries.userId eq userId) }
                 .singleOrNull()
-                ?.let { it[Images.content].inputStream }
-                ?: throw EntityNotFoundException(imageId.toString())
+                ?.get(Images.content)?.inputStream
+                ?: throw EntityNotFoundException(imageUuid)
         }
     }
 }

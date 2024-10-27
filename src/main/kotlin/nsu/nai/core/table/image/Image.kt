@@ -1,7 +1,7 @@
 package nsu.nai.core.table.image
 
 import nsu.nai.core.table.gallery.Galleries
-import nsu.nai.core.table.image.Image.Status
+import nsu.nai.core.table.image.ImageEntity.Status
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.Table
@@ -12,13 +12,7 @@ data class Image(
     val id: UUID,
     val galleryId: UUID,
     val description: String,
-) {
-    enum class Status {
-        IN_PROCESS,
-        ACTIVE,
-        FOR_REMOVAL
-    }
-}
+)
 
 data class ImageEntity(
     val id: UUID,
@@ -27,6 +21,12 @@ data class ImageEntity(
     val extension: String,
     val status: Status,
 ) {
+    enum class Status {
+        IN_PROCESS,
+        ACTIVE,
+        FOR_REMOVAL
+    }
+
     companion object {
         fun ResultRow.toImageEntity(): ImageEntity {
             return ImageEntity(

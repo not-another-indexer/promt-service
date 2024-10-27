@@ -3,17 +3,22 @@ package nsu.nai.usecase.auth
 import nsu.nai.core.table.user.User
 import nsu.nai.core.table.user.Users
 import nsu.nai.exception.BadCredentials
-import nsu.nai.exception.ValidationException
-import nsu.nai.usecase.auth.utils.validateCredentials
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.security.crypto.bcrypt.BCrypt
 import java.sql.Connection
 
+data class UserWithTokens(
+    val user: User,
+    val accessToken: String,
+    val refreshToken: String,
+)
+
 class LoginUser(
     private val username: String,
     private val rawPassword: String,
+    // infrastructure
     private val getConnection: () -> Connection
 ) {
 
@@ -23,7 +28,7 @@ class LoginUser(
      * @return Пара из пользователя и пары токенов (access и refresh).
      * @throws BadCredentials Если учетные данные неверны.
      */
-    fun execute(): Pair<User, Pair<String, String>> {
+    fun execute(): UserWithTokens {
         Database.connect(getConnection)
 
         val user = fetchUser() ?: throw BadCredentials()
@@ -33,7 +38,7 @@ class LoginUser(
         val accessToken = JwtTokenFactory.createAccessToken(user.id, user.username)
         val refreshToken = JwtTokenFactory.createRefreshToken(user.id)
 
-        return user to (accessToken to refreshToken)
+        return UserWithTokens(user, accessToken, refreshToken)
     }
 
     private fun fetchUser(): User? {

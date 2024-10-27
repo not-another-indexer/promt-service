@@ -6,10 +6,10 @@ import io.grpc.Status
 import nai.*
 import nai.Nai.*
 import nsu.Config
-import nsu.nai.core.table.gallery.Gallery
 import nsu.nai.dbqueue.Producers
 import nsu.nai.exception.EntityAlreadyExistsException
 import nsu.nai.usecase.main.CreateGallery
+import nsu.nai.usecase.main.Gallery
 import nsu.nai.usecase.main.GetGalleries
 import nsu.nai.usecase.main.RemoveGallery
 import nsu.platform.userId
@@ -56,7 +56,6 @@ class MainServiceImpl(private val producers: Producers) : MainServiceGrpcKt.Main
                 pContent.addAll(galleryPreviewResponse)
             }
         }
-
     }
 
     override suspend fun deleteGallery(request: DeleteGalleryRequest): Empty {

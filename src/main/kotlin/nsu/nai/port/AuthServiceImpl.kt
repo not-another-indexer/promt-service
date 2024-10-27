@@ -57,7 +57,7 @@ class AuthServiceImpl(
      */
     override suspend fun signIn(request: SignInRequest): SignInResponse {
         return handleRequest {
-            val (user, tokens) = LoginUser(
+            val (user, access, refresh) = LoginUser(
                 request.pUsername,
                 request.pRawPassword,
                 connectionProvider
@@ -66,8 +66,8 @@ class AuthServiceImpl(
             signInResponse {
                 pUsername = request.pUsername
                 pDisplayName = user.displayName
-                pAccessToken = tokens.first
-                pRefreshToken = tokens.second
+                pAccessToken = access
+                pRefreshToken = refresh
             }
         }
     }

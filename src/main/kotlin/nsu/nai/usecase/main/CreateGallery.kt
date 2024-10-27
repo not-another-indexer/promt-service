@@ -1,8 +1,7 @@
 package nsu.nai.usecase.main
 
 import nsu.nai.core.table.gallery.Galleries
-import nsu.nai.core.table.gallery.Gallery
-import nsu.nai.core.table.gallery.Gallery.Status
+import nsu.nai.core.table.gallery.GalleryEntity
 import nsu.nai.dbqueue.InitIndexPayload
 import nsu.nai.exception.EntityAlreadyExistsException
 import nsu.platform.enqueue
@@ -15,37 +14,34 @@ import ru.yoomoney.tech.dbqueue.api.QueueProducer
 import java.sql.Connection
 
 class CreateGallery(
-    private val userId: Long,
-    private val galleryName: String,
+    private val iUserId: Long,
+    private val iGalleryName: String,
+    // infrastructure
     private val getNewConnection: () -> Connection,
     private val initIndexProducer: QueueProducer<InitIndexPayload>
 ) {
     fun execute(): Gallery {
         Database.connect(getNewConnection)
 
-        val newGalleryId = transaction {
-            requireNotExist(userId, galleryName)
+        return transaction {
+            val galleryExists = Galleries
+                .selectAll()
+                .where { (Galleries.userId eq iUserId) and (Galleries.name eq iGalleryName) }
+                .any()
 
-            val uuid = Galleries.insert {
-                it[name] = galleryName
-                it[userId] = this@CreateGallery.userId
-                it[status] = Status.IN_PROCESS
+            if (galleryExists) {
+                throw EntityAlreadyExistsException("Gallery '$getNewConnection' already exists for user $iUserId.")
+            }
+
+            val galleryId = Galleries.insert {
+                it[name] = iGalleryName
+                it[userId] = iUserId
+                it[status] = GalleryEntity.Status.IN_PROCESS
             } get Galleries.id
 
-            initIndexProducer.enqueue(InitIndexPayload(galleryUUID = uuid.toString()))
-            return@transaction uuid
-        }
+            initIndexProducer.enqueue(InitIndexPayload(galleryUUID = galleryId.toString()))
 
-        return Gallery(newGalleryId, galleryName)
-    }
-
-    private fun requireNotExist(userId: Long, galleryName: String) {
-        val exist = Galleries.selectAll()
-            .where { (Galleries.userId eq userId) and (Galleries.name eq galleryName) }
-            .any()
-
-        if (exist) {
-            throw EntityAlreadyExistsException(galleryName)
+            Gallery(id = galleryId, name = iGalleryName)
         }
     }
 }

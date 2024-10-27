@@ -2,7 +2,7 @@ package nsu.nai.usecase.gallery
 
 import nsu.nai.core.table.gallery.Galleries
 import nsu.nai.core.table.image.Image
-import nsu.nai.core.table.image.Image.Status
+import nsu.nai.core.table.image.ImageEntity
 import nsu.nai.core.table.image.ImageExtension
 import nsu.nai.core.table.image.Images
 import nsu.nai.dbqueue.PutEntryPayload
@@ -20,11 +20,11 @@ import java.util.*
 
 class AddImage(
     private val userId: Long,
-    private val galleryIdentifier: UUID,
+    private val galleryUuid: UUID,
     private val imageDescription: String,
     private val imageExtension: ImageExtension,
     private val imageContent: ByteArray,
-    //
+    // infrastructure
     private val getNewConnection: () -> Connection,
     private val putEntryProducer: QueueProducer<PutEntryPayload>
 ) {
@@ -32,33 +32,30 @@ class AddImage(
         Database.connect(getNewConnection)
 
         val newImageId = transaction {
-            requireGalleryExist(userId, galleryIdentifier)
+            val galleryExists = Galleries
+                .selectAll()
+                .where { (Galleries.userId eq userId) and (Galleries.id eq galleryUuid) }
+                .any()
 
-            val uuid = Images.insert {
-                it[galleryUUID] = galleryIdentifier
+            if (!galleryExists) throw EntityNotFoundException(galleryUuid)
+
+            val imageId = Images.insert {
+                it[galleryUUID] = galleryUuid
                 it[description] = imageDescription
                 it[content] = ExposedBlob(imageContent)
                 it[extension] = imageExtension.extension
-                it[status] = Status.IN_PROCESS
+                it[status] = ImageEntity.Status.IN_PROCESS
             } get Images.id
 
-            putEntryProducer.enqueue(PutEntryPayload(uuid.toString()))
-            return@transaction uuid
+            imageId.also {
+                putEntryProducer.enqueue(PutEntryPayload(it))
+            }
         }
 
         return Image(
             id = newImageId,
-            galleryId = galleryIdentifier,
+            galleryId = galleryUuid,
             description = imageDescription
         )
-    }
-
-    private fun requireGalleryExist(userId: Long, galleryIdentifier: UUID) {
-        val exist = Galleries.selectAll()
-            .where { (Galleries.userId eq userId) and (Galleries.id eq galleryIdentifier) }
-            .any()
-        if (!exist) {
-            throw EntityNotFoundException("gallery")
-        }
     }
 }

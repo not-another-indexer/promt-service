@@ -23,6 +23,7 @@ class RegisterUser(
     private val username: String,
     private val displayName: String,
     private val rawPassword: String,
+    // infrastructure
     private val getNewConnection: () -> Connection
 ) {
     /**
