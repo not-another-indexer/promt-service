@@ -28,7 +28,7 @@ class RemoveGallery(
                 .where { (Galleries.userId eq userId) and (Galleries.id eq galleryIdentifier) }
                 .any()
 
-            require(galleryExists) { "No gallery found for user $userId with ID $galleryIdentifier." }
+            require(galleryExists) { "Not found the gallery with id $galleryIdentifier." }
 
             Galleries.update({ Galleries.id eq galleryIdentifier }) {
                 it[status] = GalleryEntity.Status.FOR_REMOVAL

@@ -33,9 +33,7 @@ class RegisterUser(
      */
     fun execute() {
         val errors = validateCredentials(rawPassword, username)
-        if (errors.isNotEmpty()) {
-            throw ValidationException(errors.joinToString(separator = ", "))
-        }
+        if (errors.isNotEmpty()) throw ValidationException(errors)
 
         Database.connect(getNewConnection)
 

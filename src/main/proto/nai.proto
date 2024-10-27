@@ -56,15 +56,15 @@ message AddImageRequest {
 }
 
 message AddImageResponse {
-  string p_image_id = 1;
+  string p_image_uuid = 1;
 }
 
 message DeleteImageRequest {
-  string p_image_id = 1;
+  string p_image_uuid = 1;
 }
 
 message GetImageContentRequest {
-  string p_image_id = 1;
+  string p_image_uuid = 1;
 }
 
 message GetImageContentResponse {

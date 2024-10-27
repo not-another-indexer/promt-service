@@ -9,10 +9,12 @@ class InvalidToken : Exception("invalid or expired token")
 
 class UserAlreadyExistException(username: String) : Exception("user [$username] already exists")
 
-class ValidationException(message: String) : Exception(message)
+class ValidationException(message: String) : Exception(message) {
+    constructor(errors: List<String>) : this(errors.joinToString(separator = ", "))
+}
 
 class InvalidExtensionException(message: String) :
-    Exception("extension [$message] is not allowed, , allowed extension " + ImageExtension.entries)
+    Exception("allowed extensions ${ImageExtension.entries}, got [$message]")
 
 class EntityNotFoundException(uuid: UUID) : Exception("entity with id [$uuid] not found")
 
