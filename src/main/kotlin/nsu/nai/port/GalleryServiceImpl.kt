@@ -130,10 +130,13 @@ class GalleryServiceImpl(private val producers: Producers) : GalleryServiceGrpcK
                     ).execute()
 
                     val imagesResponse = images.map {
-                        image {
-                            pImageId = it.id.toString()
-                            pGalleryUuid = it.galleryId.toString()
-                            pDescription = it.description
+                        metricImage {
+                            pImage = image {
+                                pImageId = it.image.id.toString()
+                                pGalleryUuid = it.image.galleryId.toString()
+                                pDescription = it.image.description
+                            }
+                            pMetrics.putAll(it.metrics)
                         }
                     }
                     searchImagesResponse {

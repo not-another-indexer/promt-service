@@ -27,7 +27,7 @@ class CloudberryStorageClient(channel: ManagedChannel) {
         logger.info { "initBucket[bucketUUID=$bucketUUID]" }
         return stub.initBucket(
             initBucketRequest {
-                this.pBucketUUID = bucketUUID.toString()
+                this.pBucketUuid = bucketUUID.toString()
             }
         )
     }
@@ -41,7 +41,7 @@ class CloudberryStorageClient(channel: ManagedChannel) {
         logger.info { "destroyBucket[bucketUUID=$bucketUUID]" }
         val response = stub.destroyBucket(
             destroyBucketRequest {
-                this.pBucketUUID = bucketUUID.toString()
+                this.pBucketUuid = bucketUUID.toString()
             }
         )
         logger.info { "destroyBucket response: $response" }
@@ -66,7 +66,7 @@ class CloudberryStorageClient(channel: ManagedChannel) {
         val response = stub.find(
             findRequest {
                 this.pQuery = query
-                this.pBucketUUID = bucketUUID.toString()
+                this.pBucketUuid = bucketUUID.toString()
                 this.pParameters.addAll(
                     parameters.map { (key, value) ->
                         coefficient {
@@ -93,8 +93,8 @@ class CloudberryStorageClient(channel: ManagedChannel) {
         val response = stub.putEntry(
             putEntryRequest {
                 pMetadata = contentMetadata {
-                    this.pContentUUID = contentUUID.toString()
-                    this.pBucketUUID = bucketUUID.toString()
+                    this.pContentUuid = contentUUID.toString()
+                    this.pBucketUuid = bucketUUID.toString()
                     this.pExtension = extension
                     this.pDescription = description
                 }
@@ -115,8 +115,8 @@ class CloudberryStorageClient(channel: ManagedChannel) {
         logger.info { "removeEntry[contentUUID=$contentUUID, bucketUUID=$bucketUUID]" }
         val response = stub.removeEntry(
             removeEntryRequest {
-                this.pContentUUID = contentUUID.toString()
-                this.pBucketUUID = bucketUUID.toString()
+                this.pContentUuid = contentUUID.toString()
+                this.pBucketUuid = bucketUUID.toString()
             }
         )
         logger.info { "removeEntry response: $response" }

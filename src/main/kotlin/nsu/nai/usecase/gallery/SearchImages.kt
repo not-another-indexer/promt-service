@@ -1,17 +1,22 @@
 package nsu.nai.usecase.gallery
 
-import cloudberry.findResponse
-import cloudberry.findResponseEntry
 import nsu.client.CloudberryStorageClient
 import nsu.nai.core.Parameter
 import nsu.nai.core.table.gallery.Galleries
 import nsu.nai.core.table.image.Image
 import nsu.nai.core.table.image.Images
 import nsu.nai.exception.EntityNotFoundException
-import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.sql.Connection
 import java.util.*
+
+data class ImageWithMetric(
+    val image: Image,
+    val metrics: Map<String, Double>
+)
 
 class SearchImages(
     private val userId: Long,
@@ -23,60 +28,44 @@ class SearchImages(
     private val getNewConnection: () -> Connection,
     private val cloudberry: CloudberryStorageClient
 ) {
-    suspend fun execute(): List<Image> {
+    suspend fun execute(): List<ImageWithMetric> {
         Database.connect(getNewConnection)
         transaction {
-            requireGalleryExist(userId, galleryUuid)
+            val exists = Galleries.selectAll()
+                .where { (Galleries.userId eq userId) and (Galleries.id eq galleryUuid) }
+                .any()
+
+            if (!exists) {
+                throw EntityNotFoundException(galleryUuid)
+            }
         }
 
-//        val response = cloudberry.find(
-//            query = query,
-//            bucketUUID = galleryUUID,
-//            parameters = parameters,
-//            count = count
-//        )
+        val response = cloudberry.find(
+            query = query,
+            bucketUUID = galleryUuid,
+            parameters = parameters,
+            count = count
+        )
 
-        //Test stub
-        val v1 = findResponseEntry {
-            pContentUUID = "518c3079-6fbd-423c-b3c5-62b3e7282b5c"
-        }
-        val v2 = findResponseEntry {
-            pContentUUID = "6131d3c0-c3c7-483a-ae6f-9e12a68fb362"
-        }
-        val v3 = findResponseEntry {
-            pContentUUID = "7c4c7899-47f0-404d-bfa6-948abab182e4"
-        }
-
-        val response = findResponse {
-            pEntries.add(v1)
-            pEntries.add(v2)
-            pEntries.add(v3)
-        }
-
-        val imagesUUIDs = transaction {
-            addLogger(StdOutSqlLogger)
-            response.pEntriesList.map { UUID.fromString(it.pContentUUID) }
+        val imagesWithMetric = response.pEntriesList.associate { entry ->
+            UUID.fromString(entry.pContentUuid) to entry.pMetricsList.associate { metric ->
+                metric.pParameter.name to metric.pValue
+            }
         }
 
         return transaction {
             Images.selectAll()
-                .where { Images.id inList imagesUUIDs }
+                .where { Images.id inList imagesWithMetric.keys }
                 .map { image ->
-                    Image(
-                        id = image[Images.id],
-                        galleryId = image[Images.galleryUUID],
-                        description = image[Images.description]
+                    ImageWithMetric(
+                        image = Image(
+                            id = image[Images.id],
+                            galleryId = image[Images.galleryUUID],
+                            description = image[Images.description]
+                        ),
+                        metrics = imagesWithMetric[image[Images.id]] ?: emptyMap()
                     )
                 }
-        }
-    }
-
-    private fun requireGalleryExist(userId: Long, galleryIdentifier: UUID) {
-        val exist = Galleries.selectAll()
-            .where { (Galleries.userId eq userId) and (Galleries.id eq galleryIdentifier) }
-            .any()
-        if (!exist) {
-            throw EntityNotFoundException(galleryUuid)
         }
     }
 }
