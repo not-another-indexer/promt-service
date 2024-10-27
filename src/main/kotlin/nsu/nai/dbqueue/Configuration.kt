@@ -6,6 +6,8 @@ import nsu.nai.dbqueue.impl.JdbcDatabaseAccessLayer
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.datasource.DataSourceTransactionManager
 import org.springframework.transaction.support.TransactionTemplate
+import ru.yoomoney.tech.dbqueue.api.EnqueueParams
+import ru.yoomoney.tech.dbqueue.api.EnqueueResult
 import ru.yoomoney.tech.dbqueue.api.QueueProducer
 import ru.yoomoney.tech.dbqueue.api.TaskPayloadTransformer
 import ru.yoomoney.tech.dbqueue.api.impl.MonitoringQueueProducer
@@ -18,7 +20,7 @@ import ru.yoomoney.tech.dbqueue.settings.*
 import java.time.Duration
 
 private const val CB_QUEUE = "cb_queue"
-private const val DATABASE_URL = "jdbc:postgresql://localhost:5432/dbqueue"
+private const val DATABASE_URL = "jdbc:postgresql://localhost:5432/nai_db"
 private const val DATABASE_USER = "nai_user"
 private const val DATABASE_PASSWORD = "nai_password"
 
@@ -155,7 +157,7 @@ private fun createQueueConfig(queueId: String): QueueConfig {
 private const val PG_DEFAULT_TABLE_DDL = "CREATE TABLE IF NOT EXISTS %s (\n" +
         "  id                BIGSERIAL PRIMARY KEY,\n" +
         "  queue_name        TEXT NOT NULL,\n" +
-        "  payload           TEXT,\n" +
+        "  payload           JSONB,\n" +
         "  created_at        TIMESTAMP WITH TIME ZONE DEFAULT now(),\n" +
         "  next_process_at   TIMESTAMP WITH TIME ZONE DEFAULT now(),\n" +
         "  attempt           INTEGER                  DEFAULT 0,\n" +

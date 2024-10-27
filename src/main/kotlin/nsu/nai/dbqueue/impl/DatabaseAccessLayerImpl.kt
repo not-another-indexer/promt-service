@@ -17,12 +17,9 @@ import java.util.function.Supplier
 class JdbcDatabaseAccessLayer(
     private val databaseDialect: DatabaseDialect,
     private val queueTableSchema: QueueTableSchema,
-    jdbcOperations: JdbcOperations,
-    transactionOperations: TransactionOperations
+    private val jdbcOperations: JdbcOperations,
+    private val transactionOperations: TransactionOperations
 ) : DatabaseAccessLayer {
-
-    private val jdbcOperations: JdbcOperations = Objects.requireNonNull(jdbcOperations)
-    private val transactionOperations: TransactionOperations = Objects.requireNonNull(transactionOperations)
     private val queueDao: QueueDao = createQueueDao(databaseDialect, queueTableSchema, jdbcOperations)
 
     override fun getQueueDao(): QueueDao {
