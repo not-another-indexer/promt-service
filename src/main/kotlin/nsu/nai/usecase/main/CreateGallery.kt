@@ -1,49 +1,42 @@
-@file:OptIn(ExperimentalUuidApi::class)
+package nsu.nai.usecase.main
 
-package nsu.nai.usecase.gallery
-
-import io.github.oshai.kotlinlogging.KotlinLogging.logger
-import io.grpc.StatusRuntimeException
-import nsu.client.CloudberryStorageClient
 import nsu.nai.core.table.gallery.Galleries
 import nsu.nai.core.table.gallery.Gallery
+import nsu.nai.core.table.gallery.Gallery.Status
+import nsu.nai.dbqueue.InitIndexPayload
 import nsu.nai.exception.EntityAlreadyExistsException
-import org.jetbrains.exposed.sql.*
+import nsu.platform.enqueue
+import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import ru.yoomoney.tech.dbqueue.api.QueueProducer
 import java.sql.Connection
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.toKotlinUuid
 
-@OptIn(ExperimentalUuidApi::class)
 class CreateGallery(
     private val userId: Long,
     private val galleryName: String,
-    //
     private val getNewConnection: () -> Connection,
-    private val cloudberry: CloudberryStorageClient
+    private val initIndexProducer: QueueProducer<InitIndexPayload>
 ) {
-    private val logger = logger {}
-
     fun execute(): Gallery {
         Database.connect(getNewConnection)
 
         val newGalleryId = transaction {
             requireNotExist(userId, galleryName)
 
-            Galleries.insert {
+            val uuid = Galleries.insert {
                 it[name] = galleryName
                 it[userId] = this@CreateGallery.userId
+                it[status] = Status.IN_PROCESS
             } get Galleries.id
+
+            initIndexProducer.enqueue(InitIndexPayload(galleryUUID = uuid.toString()))
+            return@transaction uuid
         }
 
-        try {
-//            val response = cloudberry.initBucket(newGalleryId.toKotlinUuid())
-        } catch (e: StatusRuntimeException) {
-            logger.error { "gallery creation failed with status ${e.status}, with message ${e.message}" }
-            throw e
-        }
-
-        return Gallery(newGalleryId.toKotlinUuid(), galleryName)
+        return Gallery(newGalleryId, galleryName)
     }
 
     private fun requireNotExist(userId: Long, galleryName: String) {

@@ -1,4 +1,4 @@
-package nsu.nai.dbqueue
+package nsu.nai.dbqueue.impl
 
 import ru.yoomoney.tech.dbqueue.api.QueueProducer
 import ru.yoomoney.tech.dbqueue.api.impl.MonitoringQueueProducer
@@ -8,7 +8,7 @@ import ru.yoomoney.tech.dbqueue.api.impl.SingleQueueShardRouter
 import ru.yoomoney.tech.dbqueue.config.QueueShard
 import ru.yoomoney.tech.dbqueue.settings.QueueConfig
 
-class QueueProducerFactory {
+object QueueProducerFactory {
     fun createQueueProducer(
         config: QueueConfig,
         shard: QueueShard<JdbcDatabaseAccessLayer>

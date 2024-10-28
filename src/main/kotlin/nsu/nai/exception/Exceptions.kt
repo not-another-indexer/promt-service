@@ -16,6 +16,6 @@ class EntityNotFoundException(entityName: String) : Exception("entity [$entityNa
 
 class EntityAlreadyExistsException(entityName: String) : Exception("entity [$entityName] already exists")
 
-class ImageUploadException(message: String) : Exception(message)
+class InProcessException : Exception()
 
 class MetadataNotFoundException() : Exception("metadata not found")

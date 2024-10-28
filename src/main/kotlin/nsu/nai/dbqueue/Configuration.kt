@@ -2,13 +2,13 @@ package nsu.nai.dbqueue
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
+import nsu.nai.dbqueue.impl.JdbcDatabaseAccessLayer
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.datasource.DataSourceTransactionManager
 import org.springframework.transaction.support.TransactionTemplate
-import ru.yoomoney.tech.dbqueue.api.EnqueueParams
 import ru.yoomoney.tech.dbqueue.api.QueueProducer
+import ru.yoomoney.tech.dbqueue.api.TaskPayloadTransformer
 import ru.yoomoney.tech.dbqueue.api.impl.MonitoringQueueProducer
-import ru.yoomoney.tech.dbqueue.api.impl.NoopPayloadTransformer
 import ru.yoomoney.tech.dbqueue.api.impl.ShardingQueueProducer
 import ru.yoomoney.tech.dbqueue.api.impl.SingleQueueShardRouter
 import ru.yoomoney.tech.dbqueue.config.*
@@ -16,55 +16,14 @@ import ru.yoomoney.tech.dbqueue.config.impl.LoggingTaskLifecycleListener
 import ru.yoomoney.tech.dbqueue.config.impl.LoggingThreadLifecycleListener
 import ru.yoomoney.tech.dbqueue.settings.*
 import java.time.Duration
-import java.util.concurrent.atomic.AtomicInteger
-import kotlin.concurrent.thread
 
 private const val CB_QUEUE = "cb_queue"
 private const val DATABASE_URL = "jdbc:postgresql://localhost:5432/dbqueue"
 private const val DATABASE_USER = "nai_user"
 private const val DATABASE_PASSWORD = "nai_password"
 
-fun main() {
-    val dataSource = createDataSource()
-    val jdbcTemplate = JdbcTemplate(dataSource)
-    val transactionTemplate = createTransactionTemplate(dataSource)
-
-    initializeDatabase(jdbcTemplate)
-
-    val taskConsumedCount = AtomicInteger(0)
-
-    val databaseAccessLayer = JdbcDatabaseAccessLayer(
-        DatabaseDialect.POSTGRESQL,
-        QueueTableSchema.builder().build(),
-        jdbcTemplate,
-        transactionTemplate
-    )
-    val shard = QueueShard(QueueShardId("main"), databaseAccessLayer)
-
-    val queueService = QueueService(
-        listOf(shard),
-        LoggingThreadLifecycleListener(),
-        LoggingTaskLifecycleListener()
-    )
-
-    val consumerFactory = QueueConsumerFactory(taskConsumedCount)
-    val producerFactory = QueueProducerFactory()
-
-    val numConsumers = 5
-    for (i in 1..numConsumers) {
-        val queueConfig = createQueueConfig("example_queue_$i")
-        val producer = producerFactory.createQueueProducer(queueConfig, shard)
-        val consumer = consumerFactory.createStringQueueConsumer(queueConfig)
-
-        queueService.registerQueue(consumer)
-        enqueueTasks(producer)
-    }
-
-    queueService.start()
-}
-
-private fun createDataSource(): HikariDataSource {
-    return HikariDataSource(HikariConfig().apply {
+fun initDbQueue(): Producers {
+    val dataSource = HikariDataSource(HikariConfig().apply {
         jdbcUrl = DATABASE_URL
         username = DATABASE_USER
         password = DATABASE_PASSWORD
@@ -73,15 +32,86 @@ private fun createDataSource(): HikariDataSource {
         idleTimeout = 300
         connectionTimeout = 30000
     })
+
+    val transactionTemplate = TransactionTemplate(DataSourceTransactionManager(dataSource))
+    val jdbcTemplate = JdbcTemplate(dataSource).also {
+        // init database
+        it.execute(String.format(PG_DEFAULT_TABLE_DDL, CB_QUEUE, CB_QUEUE, CB_QUEUE))
+    }
+
+    val databaseAccessLayer = JdbcDatabaseAccessLayer(
+        DatabaseDialect.POSTGRESQL,
+        QueueTableSchema.builder().build(),
+        jdbcTemplate,
+        transactionTemplate
+    )
+
+    val shard = QueueShard(QueueShardId("main"), databaseAccessLayer)
+
+    val queueService = QueueService(
+        listOf(shard),
+        LoggingThreadLifecycleListener(),
+        LoggingTaskLifecycleListener()
+    )
+
+    val (producer1, consumer1) = putEntry(shard)
+    val (producer2, consumer2) = removeEntry(shard)
+    val (producer3, consumer3) = initIndex(shard)
+    val (producer4, consumer4) = destroyIndex(shard)
+
+    queueService.registerQueue(consumer1)
+    queueService.registerQueue(consumer2)
+    queueService.registerQueue(consumer3)
+    queueService.registerQueue(consumer4)
+
+    queueService.start()
+
+    return Producers(producer1, producer2, producer3, producer4)
 }
 
-private fun createTransactionTemplate(dataSource: HikariDataSource): TransactionTemplate {
-    val transactionManager = DataSourceTransactionManager(dataSource)
-    return TransactionTemplate(transactionManager)
+data class Producers(
+    val putEntry: QueueProducer<PutEntryPayload>,
+    val removeEntry: QueueProducer<RemoveEntryPayload>,
+    val initIndex: QueueProducer<InitIndexPayload>,
+    val destroyIndex: QueueProducer<DestroyIndexPayload>,
+)
+
+fun putEntry(shard: QueueShard<JdbcDatabaseAccessLayer>): Pair<QueueProducer<PutEntryPayload>, PutEntryConsumer> {
+    val config = createQueueConfig("PUT_ENTRY_QUEUE")
+    val producer = producer(config, shard, PutEntryPayloadTransformer)
+    val consumer = PutEntryConsumer(config)
+    return producer to consumer
 }
 
-private fun initializeDatabase(jdbcTemplate: JdbcTemplate) {
-    jdbcTemplate.execute(String.format(PG_DEFAULT_TABLE_DDL, CB_QUEUE, CB_QUEUE, CB_QUEUE))
+fun removeEntry(shard: QueueShard<JdbcDatabaseAccessLayer>): Pair<QueueProducer<RemoveEntryPayload>, RemoveEntryConsumer> {
+    val config = createQueueConfig("REMOVE_ENTRY_QUEUE")
+    val producer = producer(config, shard, RemoveEntryPayloadTransformer)
+    val consumer = RemoveEntryConsumer(config)
+    return producer to consumer
+}
+
+fun initIndex(shard: QueueShard<JdbcDatabaseAccessLayer>): Pair<QueueProducer<InitIndexPayload>, InitIndexConsumer> {
+    val config = createQueueConfig("INIT_INDEX_QUEUE")
+    val producer = producer(config, shard, InitIndexPayloadTransformer)
+    val consumer = InitIndexConsumer(config)
+    return producer to consumer
+}
+
+fun destroyIndex(shard: QueueShard<JdbcDatabaseAccessLayer>): Pair<QueueProducer<DestroyIndexPayload>, DestroyIndexConsumer> {
+    val config = createQueueConfig("REMOVE_ENTRY_QUEUE")
+    val producer = producer(config, shard, DestroyIndexPayloadTransformer)
+    val consumer = DestroyIndexConsumer(config)
+    return producer to consumer
+}
+
+private fun <P> producer(
+    config: QueueConfig,
+    shard: QueueShard<JdbcDatabaseAccessLayer>,
+    transformer: TaskPayloadTransformer<P>
+): MonitoringQueueProducer<P> {
+    val router = SingleQueueShardRouter<P, JdbcDatabaseAccessLayer>(shard)
+    val producer = ShardingQueueProducer(config, transformer, router)
+    return MonitoringQueueProducer(producer, config.location.queueId)
 }
 
 private fun createQueueConfig(queueId: String): QueueConfig {
@@ -122,23 +152,7 @@ private fun createQueueConfig(queueId: String): QueueConfig {
     )
 }
 
-private fun createQueueProducer(
-    config: QueueConfig,
-    shard: QueueShard<JdbcDatabaseAccessLayer>
-): QueueProducer<String> {
-    val shardingQueueProducer = ShardingQueueProducer(
-        config,
-        NoopPayloadTransformer.getInstance(),
-        SingleQueueShardRouter(shard)
-    )
-    return MonitoringQueueProducer(shardingQueueProducer, config.location.queueId)
-}
-
-private fun enqueueTasks(producer: QueueProducer<String>) {
-    producer.enqueue(EnqueueParams.create("example task"))
-}
-
-const val PG_DEFAULT_TABLE_DDL = "CREATE TABLE IF NOT EXISTS %s (\n" +
+private const val PG_DEFAULT_TABLE_DDL = "CREATE TABLE IF NOT EXISTS %s (\n" +
         "  id                BIGSERIAL PRIMARY KEY,\n" +
         "  queue_name        TEXT NOT NULL,\n" +
         "  payload           TEXT,\n" +

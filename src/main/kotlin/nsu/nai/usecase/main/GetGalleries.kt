@@ -1,46 +1,35 @@
-@file:OptIn(ExperimentalUuidApi::class)
-
-package nsu.nai.usecase.gallery
+package nsu.nai.usecase.main
 
 import nsu.nai.core.table.gallery.Galleries
 import nsu.nai.core.table.gallery.Gallery
 import nsu.nai.core.table.image.Images
 import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.StdOutSqlLogger
-import org.jetbrains.exposed.sql.addLogger
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.sql.Connection
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
-import kotlin.uuid.toJavaUuid
-import kotlin.uuid.toKotlinUuid
+import java.util.*
 
-@OptIn(ExperimentalUuidApi::class)
 class GetGalleries(
     private val userId: Long,
-    //
     private val getNewConnection: () -> Connection,
 ) {
-    fun execute(): Map<Gallery, List<Uuid>> {
+    fun execute(): Map<Gallery, List<UUID>> {
 
         Database.connect(getNewConnection)
 
         return transaction {
-            addLogger(StdOutSqlLogger)
-
             Galleries.selectAll()
                 .where { Galleries.userId eq userId }
                 .map { gallery ->
                     Gallery(
-                        id = gallery[Galleries.id].toKotlinUuid(),
+                        id = gallery[Galleries.id],
                         name = gallery[Galleries.name]
                     )
                 }.associateWith { gallery ->
                     Images.selectAll()
-                        .where { Images.galleryUuid eq gallery.id.toJavaUuid() }
+                        .where { Images.galleryUUID eq gallery.id }
                         .limit(4)
-                        .map { image -> image[Images.id].toKotlinUuid() }
+                        .map { image -> image[Images.id] }
                 }
         }
     }

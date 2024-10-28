@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalUuidApi::class)
-
 package nsu.nai.port
 
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -9,15 +7,15 @@ import nai.*
 import nai.Nai.*
 import nsu.Config
 import nsu.nai.core.table.gallery.Gallery
+import nsu.nai.dbqueue.Producers
 import nsu.nai.exception.EntityAlreadyExistsException
-import nsu.nai.usecase.gallery.CreateGallery
-import nsu.nai.usecase.gallery.GetGalleries
-import nsu.nai.usecase.gallery.RemoveGallery
+import nsu.nai.usecase.main.CreateGallery
+import nsu.nai.usecase.main.GetGalleries
+import nsu.nai.usecase.main.RemoveGallery
 import nsu.platform.userId
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
+import java.util.*
 
-class MainServiceImpl : MainServiceGrpcKt.MainServiceCoroutineImplBase() {
+class MainServiceImpl(private val producers: Producers) : MainServiceGrpcKt.MainServiceCoroutineImplBase() {
 
     private val logger = KotlinLogging.logger {}
 
@@ -29,12 +27,10 @@ class MainServiceImpl : MainServiceGrpcKt.MainServiceCoroutineImplBase() {
                 userId,
                 request.pGalleryName,
                 getNewConnection = Config.connectionProvider,
-                cloudberry = Config.cloudberry
+                producers.initIndex
             ).execute()
 
-            createGalleryResponse {
-                pGalleryId = gallery.id.toString()
-            }
+            createGalleryResponse { pGalleryId = gallery.id.toString() }
         }
     }
 
@@ -42,7 +38,7 @@ class MainServiceImpl : MainServiceGrpcKt.MainServiceCoroutineImplBase() {
         val userId = Context.current().userId
 
         return handleRequest {
-            val galleriesPreview: Map<Gallery, List<Uuid>> = GetGalleries(
+            val galleriesPreview: Map<Gallery, List<UUID>> = GetGalleries(
                 userId,
                 getNewConnection = Config.connectionProvider,
             ).execute()
@@ -68,12 +64,12 @@ class MainServiceImpl : MainServiceGrpcKt.MainServiceCoroutineImplBase() {
 
             RemoveGallery(
                 userId,
-                Uuid.parse(request.pGalleryId),
+                UUID.fromString(request.pGalleryId),
                 getNewConnection = Config.connectionProvider,
-                cloudberry = Config.cloudberry
+                producers.destroyIndex
             ).execute()
 
-            empty {  }
+            empty { }
         }
     }
 

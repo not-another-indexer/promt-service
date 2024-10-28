@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalUuidApi::class)
-
 package nsu.client
 
 import cloudberry.*
@@ -8,8 +6,7 @@ import cloudberry.CloudberryStorageOuterClass.FindResponse
 import com.google.protobuf.ByteString
 import io.grpc.ManagedChannel
 import nsu.nai.core.Parameter
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
+import java.util.*
 import cloudberry.CloudberryStorageOuterClass.Parameter as CoefficientType
 
 /**
@@ -21,43 +18,43 @@ class CloudberryStorageClient(channel: ManagedChannel) {
 
     /**
      * Инициализирует новую корзинку в хранилище
-     * @param bucketUuid UUID корзинки
+     * @param bucketUUID UUID корзинки
      * @return ответ на запрос инициализации корзинки
      */
-    suspend fun initBucket(bucketUuid: Uuid): Empty = stub.initBucket(
+    suspend fun initBucket(bucketUUID: UUID): Empty = stub.initBucket(
         initBucketRequest {
-            this.pBucketUuid = bucketUuid.toString()
+            this.pBucketUUID = bucketUUID.toString()
         }
     )
 
     /**
      * Удаляет корзинку по ее UUID
-     * @param bucketUuid UUID корзинки
+     * @param bucketUUID UUID корзинки
      * @return ответ на запрос удаления корзинки
      */
-    suspend fun destroyBucket(bucketUuid: Uuid): Empty = stub.destroyBucket(
+    suspend fun destroyBucket(bucketUUID: UUID): Empty = stub.destroyBucket(
         destroyBucketRequest {
-            this.pBucketUuid = bucketUuid.toString()
+            this.pBucketUUID = bucketUUID.toString()
         }
     )
 
     /**
      * Ищет контент в корзинке по текстовому запросу
      * @param query строка с описанием контента
-     * @param bucketUuid UUID корзинки, в которой выполняется поиск
+     * @param bucketUUID UUID корзинки, в которой выполняется поиск
      * @param parameters параметры поиска с весовыми коэффициентами
      * @param count количество результатов, которое необходимо получить
      * @return ответ на запрос поиска
      */
     suspend fun find(
         query: String,
-        bucketUuid: Uuid,
+        bucketUUID: UUID,
         parameters: Map<Parameter, Double>,
         count: Long
     ): FindResponse = stub.find(
         findRequest {
             this.pQuery = query
-            this.pBucketUuid = bucketUuid.toString()
+            this.pBucketUUID = bucketUUID.toString()
             this.pParameters.addAll(
                 parameters.map { (key, value) ->
                     coefficient {
@@ -71,16 +68,16 @@ class CloudberryStorageClient(channel: ManagedChannel) {
     )
 
     suspend fun putEntry(
-        contentUuid: Uuid,
-        bucketUuid: Uuid,
+        contentUUID: UUID,
+        bucketUUID: UUID,
         extension: String,
         description: String,
         content: ByteArray
     ): Empty = stub.putEntry(
         putEntryRequest {
             pMetadata = contentMetadata {
-                this.pContentUuid = contentUuid.toString()
-                this.pBucketUuid = bucketUuid.toString()
+                this.pContentUUID = contentUUID.toString()
+                this.pBucketUUID = bucketUUID.toString()
                 this.pExtension = extension
                 this.pDescription = description
             }
@@ -90,14 +87,14 @@ class CloudberryStorageClient(channel: ManagedChannel) {
 
     /**
      * Удаляет запись по UUID контента и корзинки
-     * @param contentUuid UUID контента
-     * @param bucketUuid UUID корзинки
+     * @param contentUUID UUID контента
+     * @param bucketUUID UUID корзинки
      * @return ответ на запрос удаления записи
      */
-    suspend fun removeEntry(contentUuid: Uuid, bucketUuid: Uuid): Empty = stub.removeEntry(
+    suspend fun removeEntry(contentUUID: UUID, bucketUUID: UUID): Empty = stub.removeEntry(
         removeEntryRequest {
-            this.pContentUuid = contentUuid.toString()
-            this.pBucketUuid = bucketUuid.toString()
+            this.pContentUUID = contentUUID.toString()
+            this.pBucketUUID = bucketUUID.toString()
         }
     )
 }

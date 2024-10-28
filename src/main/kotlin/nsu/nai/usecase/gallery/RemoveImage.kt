@@ -1,49 +1,46 @@
-@file:OptIn(ExperimentalUuidApi::class)
-
 package nsu.nai.usecase.gallery
 
-import io.github.oshai.kotlinlogging.KotlinLogging.logger
-import io.grpc.StatusRuntimeException
-import nsu.client.CloudberryStorageClient
 import nsu.nai.core.table.gallery.Galleries
+import nsu.nai.core.table.image.Image.Status
 import nsu.nai.core.table.image.Images
-import org.jetbrains.exposed.sql.*
+import nsu.nai.dbqueue.RemoveEntryPayload
+import nsu.nai.exception.EntityNotFoundException
+import nsu.nai.exception.InProcessException
+import nsu.platform.enqueue
+import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
+import ru.yoomoney.tech.dbqueue.api.QueueProducer
 import java.sql.Connection
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
-import kotlin.uuid.toJavaUuid
+import java.util.*
 
-@OptIn(ExperimentalUuidApi::class)
+
 class RemoveImage(
     private val userId: Long,
-    private val imageIdentifier: Uuid,
-    //
+    private val imageIdentifier: UUID,
     private val getNewConnection: () -> Connection,
-    private val cloudberry: CloudberryStorageClient
+    private val removeEntryProducer: QueueProducer<RemoveEntryPayload>
 ) {
-    private val logger = logger {}
-
-    suspend fun execute() {
+    fun execute() {
         Database.connect(getNewConnection)
 
         transaction {
-            addLogger(StdOutSqlLogger)
+            val op = (Galleries.userId eq userId) and (Images.id eq imageIdentifier)
+            val result = Images.innerJoin(Galleries).selectAll().where(op).singleOrNull()
+                ?: throw EntityNotFoundException(imageIdentifier.toString())
 
-            Images.innerJoin(Galleries).delete(Images) {
-                (Galleries.userId eq userId) and (Images.id eq imageIdentifier.toJavaUuid())
+            val status: Status = result[Images.status]
+            if (status == Status.IN_PROCESS) {
+                throw InProcessException()
             }
-        }
+            Images.update({ op }, 1) {
+                it[Images.status] = Status.FOR_REMOVAL
+            }
 
-        //TODO Коннект с Михой
-        try {
-//            val response = cloudberry.removeEntry(
-//                contentUuid = imageIdentifier,
-//                bucketUuid = galleryUuid.toKotlinUuid()
-//            )
-        } catch (e: StatusRuntimeException) {
-            logger.error { "image removal failed with status ${e.status}, with message ${e.message}" }
-            "image removal failed with status ${e.status}, with message ${e.message}" to false
+            removeEntryProducer.enqueue(RemoveEntryPayload(imageIdentifier.toString()))
         }
     }
 }

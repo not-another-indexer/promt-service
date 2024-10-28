@@ -1,19 +1,19 @@
-@file:OptIn(ExperimentalUuidApi::class, DelicateCoroutinesApi::class)
-
 package nsu.nai.port
 
 import com.google.protobuf.ByteString
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.grpc.Context
 import io.grpc.Status
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import nai.*
 import nai.Nai.*
-import nai.Nai.GetGalleryImagesRequest
 import nsu.Config
 import nsu.nai.core.Parameter
 import nsu.nai.core.table.image.Image
 import nsu.nai.core.table.image.ImageExtension
+import nsu.nai.dbqueue.Producers
 import nsu.nai.exception.EntityAlreadyExistsException
 import nsu.nai.exception.EntityNotFoundException
 import nsu.nai.exception.InvalidExtensionException
@@ -21,11 +21,9 @@ import nsu.nai.exception.MetadataNotFoundException
 import nsu.nai.usecase.gallery.*
 import nsu.platform.userId
 import java.io.ByteArrayOutputStream
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
+import java.util.*
 
-class GalleryServiceImpl : GalleryServiceGrpcKt.GalleryServiceCoroutineImplBase() {
-
+class GalleryServiceImpl(private val producers: Producers) : GalleryServiceGrpcKt.GalleryServiceCoroutineImplBase() {
     val logger = KotlinLogging.logger {}
 
     override suspend fun getGalleryImages(request: GetGalleryImagesRequest): GetGalleryImagesResponse {
@@ -36,7 +34,7 @@ class GalleryServiceImpl : GalleryServiceGrpcKt.GalleryServiceCoroutineImplBase(
             val userId = Context.current().userId
             val (images: List<Image>, totalSize: Long) = GetGalleryImages(
                 userId,
-                Uuid.parse(request.pGalleryId),
+                UUID.fromString(request.pGalleryId),
                 request.pSize,
                 request.pOffset.toLong(),
                 Config.connectionProvider
@@ -57,7 +55,6 @@ class GalleryServiceImpl : GalleryServiceGrpcKt.GalleryServiceCoroutineImplBase(
     }
 
     override suspend fun addImage(request: AddImageRequest): AddImageResponse {
-
         return handleRequest {
             val userId = Context.current().userId
             val metadata: ContentMetadata? = request.pMetadata
@@ -70,12 +67,12 @@ class GalleryServiceImpl : GalleryServiceGrpcKt.GalleryServiceCoroutineImplBase(
 
             val image = AddImage(
                 userId,
-                galleryIdentifier = Uuid.parse(metadata.pGalleryId),
+                galleryIdentifier = UUID.fromString(metadata.pGalleryId),
                 imageDescription = metadata.pDescription,
                 imageExtension = imageExtension,
                 imageContent = imageChunks.toByteArray(),
                 getNewConnection = Config.connectionProvider,
-                cloudberry = Config.cloudberry
+                putEntryProducer = producers.putEntry
             ).execute()
 
             addImageResponse {
@@ -87,14 +84,14 @@ class GalleryServiceImpl : GalleryServiceGrpcKt.GalleryServiceCoroutineImplBase(
     override suspend fun deleteImage(request: DeleteImageRequest): Empty {
         return handleRequest {
             val userId = Context.current().userId
-            runBlocking {
-                RemoveImage(
-                    userId, Uuid.parse(request.pImageId), Config.connectionProvider,
-                    Config.cloudberry
-                ).execute()
+            RemoveImage(
+                userId,
+                UUID.fromString(request.pImageId),
+                Config.connectionProvider,
+                producers.removeEntry
+            ).execute()
 
-                empty { }
-            }
+            empty { }
         }
     }
 
@@ -103,7 +100,7 @@ class GalleryServiceImpl : GalleryServiceGrpcKt.GalleryServiceCoroutineImplBase(
             val imageId = request.pImageId
             val userId = Context.current().userId
 
-            val imageIdentifier = Uuid.parse(imageId)
+            val imageIdentifier = UUID.fromString(imageId)
 
             runBlocking {
                 val inputStream = GetImageContent(userId, imageIdentifier, Config.connectionProvider).execute()
@@ -130,7 +127,7 @@ class GalleryServiceImpl : GalleryServiceGrpcKt.GalleryServiceCoroutineImplBase(
                     val images = SearchImages(
                         userId,
                         query,
-                        Uuid.parse(galleryId),
+                        UUID.fromString(galleryId),
                         parameters,
                         count,
                         Config.connectionProvider,
