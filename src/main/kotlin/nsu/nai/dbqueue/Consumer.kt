@@ -1,10 +1,14 @@
 package nsu.nai.dbqueue
 
+import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.runBlocking
+import nsu.Config
 import ru.yoomoney.tech.dbqueue.api.QueueConsumer
 import ru.yoomoney.tech.dbqueue.api.Task
 import ru.yoomoney.tech.dbqueue.api.TaskExecutionResult
 import ru.yoomoney.tech.dbqueue.api.TaskPayloadTransformer
 import ru.yoomoney.tech.dbqueue.settings.QueueConfig
+import java.util.*
 
 class PutEntryConsumer(private val config: QueueConfig) : QueueConsumer<PutEntryPayload> {
     override fun execute(task: Task<PutEntryPayload>): TaskExecutionResult {
@@ -79,8 +83,17 @@ class RemoveEntryConsumer(private val config: QueueConfig) : QueueConsumer<Remov
 }
 
 class InitIndexConsumer(private val config: QueueConfig) : QueueConsumer<InitIndexPayload> {
+    private val logger = KotlinLogging.logger { }
     override fun execute(task: Task<InitIndexPayload>): TaskExecutionResult {
-        TODO()
+        try {
+            runBlocking {
+                Config.cloudberry.initBucket(UUID.fromString(task.payload.get().galleryUUID))
+            }
+        } catch (e: Exception) {
+            logger.error(e) { "InitIndexConsumer error" }
+            return TaskExecutionResult.fail()
+        }
+        return TaskExecutionResult.finish()
     }
 
     override fun getQueueConfig(): QueueConfig = config

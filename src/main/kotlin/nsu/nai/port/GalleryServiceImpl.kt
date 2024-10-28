@@ -34,7 +34,7 @@ class GalleryServiceImpl(private val producers: Producers) : GalleryServiceGrpcK
             val userId = Context.current().userId
             val (images: List<Image>, totalSize: Long) = GetGalleryImages(
                 userId,
-                UUID.fromString(request.pGalleryId),
+                UUID.fromString(request.pGalleryUuid),
                 request.pSize,
                 request.pOffset.toLong(),
                 Config.connectionProvider
@@ -43,7 +43,7 @@ class GalleryServiceImpl(private val producers: Producers) : GalleryServiceGrpcK
             val imageResponses = images.map { image ->
                 image {
                     pImageId = image.id.toString()
-                    pGalleryId = image.galleryId.toString()
+                    pGalleryUuid = image.galleryId.toString()
                     pDescription = image.description
                 }
             }
@@ -67,7 +67,7 @@ class GalleryServiceImpl(private val producers: Producers) : GalleryServiceGrpcK
 
             val image = AddImage(
                 userId,
-                galleryIdentifier = UUID.fromString(metadata.pGalleryId),
+                galleryIdentifier = UUID.fromString(metadata.pGalleryUuid),
                 imageDescription = metadata.pDescription,
                 imageExtension = imageExtension,
                 imageContent = imageChunks.toByteArray(),
@@ -116,7 +116,7 @@ class GalleryServiceImpl(private val producers: Producers) : GalleryServiceGrpcK
         return handleRequest {
             val userId = Context.current().userId
             val query = request.pQuery
-            val galleryId = request.pGalleryId
+            val galleryId = request.pGalleryUuid
             val parameters = request.pParametersMap.mapKeys { Parameter.valueOf(it.key) }
             val count = request.pCount
 
@@ -137,7 +137,7 @@ class GalleryServiceImpl(private val producers: Producers) : GalleryServiceGrpcK
                     val imagesResponse = images.map {
                         image {
                             pImageId = it.id.toString()
-                            pGalleryId = it.galleryId.toString()
+                            pGalleryUuid = it.galleryId.toString()
                             pDescription = it.description
                         }
                     }

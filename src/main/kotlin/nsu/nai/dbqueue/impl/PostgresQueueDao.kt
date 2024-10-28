@@ -1,5 +1,7 @@
 package nsu.nai.dbqueue.impl
 
+import org.jetbrains.exposed.sql.statements.StatementType
+import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.jdbc.core.JdbcOperations
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
@@ -9,7 +11,8 @@ import ru.yoomoney.tech.dbqueue.dao.QueueDao
 import ru.yoomoney.tech.dbqueue.settings.QueueLocation
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.jvm.optionals.asSequence
+import java.util.stream.Collectors
+
 
 class PostgresQueueDao(
     jdbcTemplate: JdbcOperations,
@@ -23,7 +26,21 @@ class PostgresQueueDao(
     override fun enqueue(location: QueueLocation, enqueueParams: EnqueueParams<String>): Long {
         val params = createEnqueueParams(location, enqueueParams)
         val enqueueSql = enqueueSqlCache.computeIfAbsent(location) { createEnqueueSql(location) }
-        return requireNotNull(jdbcTemplate.queryForObject(enqueueSql, params, Long::class.java))
+        return transaction {
+            val stmt = getGeneratedSql(enqueueSql, params.values)
+            exec(stmt, explicitStatementType = StatementType.SELECT) {
+                it.next()
+                it.getLong(1)
+            }!!
+        }
+    }
+
+    private fun getGeneratedSql(sql: String, params: Map<String, Any?>): String {
+        var generatedSql = sql
+        params.forEach { (key, value) ->
+            generatedSql = generatedSql.replace(":$key", value.toString())
+        }
+        return generatedSql
     }
 
     override fun deleteTask(location: QueueLocation, taskId: Long): Boolean {
@@ -39,16 +56,14 @@ class PostgresQueueDao(
     }
 
     override fun reenqueue(location: QueueLocation, taskId: Long, executionDelay: Duration): Boolean {
-        val requeueSql = requeueSqlCache.computeIfAbsent(location) { createRequeueSql(location) }
         val updatedRows = jdbcTemplate.update(
-            requeueSql,
-            MapSqlParameterSource().apply {
-                addValue("id", taskId)
-                addValue("queueName", location.queueId.asString())
-                addValue("executionDelay", executionDelay.seconds)
-            }
+            requeueSqlCache.computeIfAbsent(location, this::createReenqueueSql),
+            MapSqlParameterSource()
+                .addValue("id", taskId)
+                .addValue("queueName", location.queueId.asString())
+                .addValue("executionDelay", executionDelay.seconds)
         )
-        return updatedRows > 0
+        return updatedRows != 0
     }
 
     private fun createEnqueueParams(
@@ -66,46 +81,25 @@ class PostgresQueueDao(
     }
 
     private fun createEnqueueSql(location: QueueLocation): String {
-        val extFieldsSql = queueTableSchema.extFields
-            .joinToString(", ") { it }
-            .let { if (it.isNotEmpty()) ", $it" else "" }
-        val idSequenceSql = location.idSequence.asSequence()
-            .joinToString(", ") { "nextval('$it')" }
-            .let { if (it.isNotEmpty()) "$it, " else "" }
-
         return """
-            INSERT INTO ${location.tableName} (
-                ${idSequenceSql}${queueTableSchema.queueNameField}, 
-                ${queueTableSchema.payloadField}, 
-                ${queueTableSchema.nextProcessAtField}, 
-                ${queueTableSchema.reenqueueAttemptField}, 
-                ${queueTableSchema.totalAttemptField}$extFieldsSql
-            ) VALUES (
-                ${idSequenceSql}:queueName, 
-                :payload, 
-                now() + :executionDelay * INTERVAL '1 SECOND', 
-                0, 
-                0${if (queueTableSchema.extFields.isNotEmpty()) queueTableSchema.extFields.joinToString(", ") { ":$it" } else ""}
-            ) RETURNING ${queueTableSchema.idField}
+            INSERT INTO 
+            ${location.tableName}(queue_name,payload,next_process_at,reenqueue_attempt,total_attempt) 
+            VALUES (':queueName', ':payload', now() +  0 * INTERVAL '1 SECOND', 0, 0) RETURNING id
         """.trimIndent()
     }
 
     private fun createDeleteSql(location: QueueLocation): String {
-        return """
-            DELETE FROM ${location.tableName} 
-            WHERE ${queueTableSchema.queueNameField} = :queueName 
-            AND ${queueTableSchema.idField} = :id
-        """.trimIndent()
+        return "DELETE FROM " + location.tableName + " WHERE " + queueTableSchema.queueNameField +
+                " = :queueName AND " + queueTableSchema.idField + " = :id"
     }
 
-    private fun createRequeueSql(location: QueueLocation): String {
-        return """
-            UPDATE ${location.tableName} 
-            SET ${queueTableSchema.nextProcessAtField} = now() + :executionDelay * INTERVAL '1 SECOND',
-                ${queueTableSchema.attemptField} = 0,
-                ${queueTableSchema.reenqueueAttemptField} = ${queueTableSchema.reenqueueAttemptField} + 1
-            WHERE ${queueTableSchema.idField} = :id 
-            AND ${queueTableSchema.queueNameField} = :queueName
-        """.trimIndent()
+    private fun createReenqueueSql(location: QueueLocation): String {
+        return "UPDATE " + location.tableName + " SET " + queueTableSchema.nextProcessAtField +
+                " = now() + :executionDelay * INTERVAL '1 SECOND', " +
+                queueTableSchema.attemptField + " = 0, " +
+                queueTableSchema.reenqueueAttemptField +
+                " = " + queueTableSchema.reenqueueAttemptField + " + 1 " +
+                "WHERE " + queueTableSchema.idField + " = :id AND " +
+                queueTableSchema.queueNameField + " = :queueName"
     }
 }

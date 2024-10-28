@@ -30,7 +30,7 @@ class MainServiceImpl(private val producers: Producers) : MainServiceGrpcKt.Main
                 producers.initIndex
             ).execute()
 
-            createGalleryResponse { pGalleryId = gallery.id.toString() }
+            createGalleryResponse { pGalleryUuid = gallery.id.toString() }
         }
     }
 
@@ -45,7 +45,7 @@ class MainServiceImpl(private val producers: Producers) : MainServiceGrpcKt.Main
 
             val galleryPreviewResponse: List<GalleryPreview> = galleriesPreview.map {
                 galleryPreview {
-                    pGalleryId = it.key.id.toString()
+                    pGalleryUuid = it.key.id.toString()
                     pGalleryName = it.key.name
                     pPreview.addAll(it.value.map { it.toString() })
                 }
@@ -64,7 +64,7 @@ class MainServiceImpl(private val producers: Producers) : MainServiceGrpcKt.Main
 
             RemoveGallery(
                 userId,
-                UUID.fromString(request.pGalleryId),
+                UUID.fromString(request.pGalleryUuid),
                 getNewConnection = Config.connectionProvider,
                 producers.destroyIndex
             ).execute()

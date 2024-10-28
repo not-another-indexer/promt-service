@@ -24,11 +24,6 @@ class LoginUser(
      * @throws BadCredentials Если учетные данные неверны.
      */
     fun execute(): Pair<User, Pair<String, String>> {
-        val errors = validateCredentials(rawPassword, username)
-        if (errors.isNotEmpty()) {
-            throw ValidationException(errors.joinToString(separator = ", "))
-        }
-
         Database.connect(getConnection)
 
         val user = fetchUser() ?: throw BadCredentials()
