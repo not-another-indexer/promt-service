@@ -1,7 +1,7 @@
 package nsu.nai.usecase.main
 
 import nsu.nai.core.table.gallery.Galleries
-import nsu.nai.core.table.gallery.Gallery
+import nsu.nai.core.table.gallery.GalleryEntity
 import nsu.nai.dbqueue.DestroyIndexPayload
 import nsu.platform.enqueue
 import org.jetbrains.exposed.sql.Database
@@ -23,25 +23,18 @@ class RemoveGallery(
         Database.connect(getNewConnection)
 
         transaction {
-            require(isGalleryExist(userId, galleryIdentifier)) { "No gallery results found" }
+            val galleryExists = Galleries
+                .selectAll()
+                .where { (Galleries.userId eq userId) and (Galleries.id eq galleryIdentifier) }
+                .any()
 
-            Galleries.update(
-                where = { Galleries.id eq galleryIdentifier },
-                body = { it[status] = Gallery.Status.FOR_REMOVAL }
-            )
+            require(galleryExists) { "No gallery found for user $userId with ID $galleryIdentifier." }
+
+            Galleries.update({ Galleries.id eq galleryIdentifier }) {
+                it[status] = GalleryEntity.Status.FOR_REMOVAL
+            }
 
             destroyIndexProducer.enqueue(DestroyIndexPayload(galleryIdentifier.toString()))
-        }
-    }
-
-    private fun isGalleryExist(userId: Long, galleryIdentifier: UUID): Boolean {
-        return try {
-            Galleries.selectAll()
-                .where { (Galleries.userId eq userId) and (Galleries.id eq galleryIdentifier) }
-                .single()
-            true
-        } catch (e: Exception) {
-            false
         }
     }
 }

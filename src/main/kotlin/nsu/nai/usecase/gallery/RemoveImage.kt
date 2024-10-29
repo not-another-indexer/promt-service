@@ -1,11 +1,11 @@
 package nsu.nai.usecase.gallery
 
 import nsu.nai.core.table.gallery.Galleries
-import nsu.nai.core.table.image.Image.Status
+import nsu.nai.core.table.image.ImageEntity
 import nsu.nai.core.table.image.Images
 import nsu.nai.dbqueue.RemoveEntryPayload
 import nsu.nai.exception.EntityNotFoundException
-import nsu.nai.exception.InProcessException
+import nsu.nai.exception.ImageInProcessException
 import nsu.platform.enqueue
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -17,10 +17,10 @@ import ru.yoomoney.tech.dbqueue.api.QueueProducer
 import java.sql.Connection
 import java.util.*
 
-
 class RemoveImage(
     private val userId: Long,
-    private val imageIdentifier: UUID,
+    private val imageUuid: UUID,
+    // infrastructure
     private val getNewConnection: () -> Connection,
     private val removeEntryProducer: QueueProducer<RemoveEntryPayload>
 ) {
@@ -28,19 +28,20 @@ class RemoveImage(
         Database.connect(getNewConnection)
 
         transaction {
-            val op = (Galleries.userId eq userId) and (Images.id eq imageIdentifier)
-            val result = Images.innerJoin(Galleries).selectAll().where(op).singleOrNull()
-                ?: throw EntityNotFoundException(imageIdentifier.toString())
+            val condition = (Galleries.userId eq userId) and (Images.id eq imageUuid)
 
-            val status: Status = result[Images.status]
-            if (status == Status.IN_PROCESS) {
-                throw InProcessException()
-            }
-            Images.innerJoin(Galleries).update({ op }) {
-                it[Images.status] = Status.FOR_REMOVAL
+            val imageRow = Images.innerJoin(Galleries).selectAll().where { condition }.singleOrNull()
+                ?: throw EntityNotFoundException(imageUuid)
+
+            if (imageRow[Images.status] == ImageEntity.Status.IN_PROCESS) {
+                throw ImageInProcessException(imageRow[Images.id])
             }
 
-            removeEntryProducer.enqueue(RemoveEntryPayload(imageIdentifier.toString()))
+            Images.update({ condition }) {
+                it[status] = ImageEntity.Status.FOR_REMOVAL
+            }
+
+            removeEntryProducer.enqueue(RemoveEntryPayload(imageUuid.toString()))
         }
     }
 }

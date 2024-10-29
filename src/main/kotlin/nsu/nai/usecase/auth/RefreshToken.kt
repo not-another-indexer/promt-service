@@ -18,6 +18,7 @@ import java.sql.Connection
 
 class RefreshToken(
     private val refreshToken: String,
+    // infrastructure
     private val getNewConnection: () -> Connection
 ) {
     private val logger = KotlinLogging.logger {}

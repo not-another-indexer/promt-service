@@ -67,7 +67,7 @@ class GalleryServiceImpl(private val producers: Producers) : GalleryServiceGrpcK
 
             val image = AddImage(
                 userId,
-                galleryIdentifier = UUID.fromString(metadata.pGalleryUuid),
+                galleryUuid = UUID.fromString(metadata.pGalleryUuid),
                 imageDescription = metadata.pDescription,
                 imageExtension = imageExtension,
                 imageContent = imageChunks.toByteArray(),

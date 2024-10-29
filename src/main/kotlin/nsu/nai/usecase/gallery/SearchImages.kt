@@ -16,17 +16,17 @@ import java.util.*
 class SearchImages(
     private val userId: Long,
     private val query: String,
-    private val galleryUUID: UUID,
+    private val galleryUuid: UUID,
     private val parameters: Map<Parameter, Double>,
     private val count: Long,
-    //
+    // infrastructure
     private val getNewConnection: () -> Connection,
     private val cloudberry: CloudberryStorageClient
 ) {
     suspend fun execute(): List<Image> {
         Database.connect(getNewConnection)
         transaction {
-            requireGalleryExist(userId, galleryUUID)
+            requireGalleryExist(userId, galleryUuid)
         }
 
 //        val response = cloudberry.find(
@@ -76,7 +76,7 @@ class SearchImages(
             .where { (Galleries.userId eq userId) and (Galleries.id eq galleryIdentifier) }
             .any()
         if (!exist) {
-            throw EntityNotFoundException("gallery")
+            throw EntityNotFoundException(galleryUuid)
         }
     }
 }
