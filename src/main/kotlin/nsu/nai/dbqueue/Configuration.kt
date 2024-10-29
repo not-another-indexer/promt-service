@@ -100,7 +100,7 @@ fun initIndex(shard: QueueShard<JdbcDatabaseAccessLayer>): Pair<QueueProducer<In
 }
 
 fun destroyIndex(shard: QueueShard<JdbcDatabaseAccessLayer>): Pair<QueueProducer<DestroyIndexPayload>, DestroyIndexConsumer> {
-    val config = createQueueConfig("REMOVE_ENTRY_QUEUE")
+    val config = createQueueConfig("DESTROY_INDEX_QUEUE")
     val producer = producer(config, shard, DestroyIndexPayloadTransformer)
     val consumer = DestroyIndexConsumer(config)
     return producer to consumer

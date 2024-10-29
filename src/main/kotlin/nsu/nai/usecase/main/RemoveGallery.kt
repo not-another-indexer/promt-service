@@ -27,11 +27,10 @@ class RemoveGallery(
 
             Galleries.update(
                 where = { Galleries.id eq galleryIdentifier },
-                limit = 1,
                 body = { it[status] = Gallery.Status.FOR_REMOVAL }
             )
 
-            destroyIndexProducer.enqueue(DestroyIndexPayload(galleryUUID = galleryIdentifier.toString()))
+            destroyIndexProducer.enqueue(DestroyIndexPayload(galleryIdentifier.toString()))
         }
     }
 

@@ -21,8 +21,9 @@ class MainServiceImpl(private val producers: Producers) : MainServiceGrpcKt.Main
 
     override suspend fun createGallery(request: CreateGalleryRequest): CreateGalleryResponse {
         val userId = Context.current().userId
-
         return handleRequest {
+            require(!request.pGalleryName.isNullOrBlank()) { "gallery name must not be blank" }
+
             val gallery = CreateGallery(
                 userId,
                 request.pGalleryName,

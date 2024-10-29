@@ -36,7 +36,7 @@ class RemoveImage(
             if (status == Status.IN_PROCESS) {
                 throw InProcessException()
             }
-            Images.update({ op }, 1) {
+            Images.innerJoin(Galleries).update({ op }) {
                 it[Images.status] = Status.FOR_REMOVAL
             }
 

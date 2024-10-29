@@ -34,17 +34,16 @@ class AddImage(
         val newImageId = transaction {
             requireGalleryExist(userId, galleryIdentifier)
 
-            val UUID = Images.insert {
+            val uuid = Images.insert {
                 it[galleryUUID] = galleryIdentifier
                 it[description] = imageDescription
                 it[content] = ExposedBlob(imageContent)
                 it[extension] = imageExtension.extension
-                it[status] = enumeration<Status>(Status.IN_PROCESS.toString())
+                it[status] = Status.IN_PROCESS
             } get Images.id
 
-            // TODO: разобраться, как линкануть транзакции template и exposed
-            putEntryProducer.enqueue(PutEntryPayload(UUID.toString()))
-            return@transaction UUID
+            putEntryProducer.enqueue(PutEntryPayload(uuid.toString()))
+            return@transaction uuid
         }
 
         return Image(
