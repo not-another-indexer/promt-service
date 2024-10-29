@@ -65,7 +65,7 @@ class RemoveEntryConsumer(config: QueueConfig) : BaseConsumer<RemoveEntryPayload
         val uuid = UUID.fromString(task.payload.get().imageUUID)
         return runTransaction(uuid) { bucketUuid ->
             Config.cloudberry.removeEntry(uuid, bucketUuid)
-            Images.deleteWhere { Images.id eq uuid }
+            Images.deleteWhere { id eq uuid }
         }
     }
 

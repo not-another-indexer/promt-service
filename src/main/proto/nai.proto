@@ -78,8 +78,13 @@ message SearchImagesRequest {
   int64 p_count = 4;
 }
 
+message MetricImage {
+  Image p_image = 1;
+  map<string, double> p_metrics = 2;
+}
+
 message SearchImagesResponse {
-  repeated Image p_content = 1;
+  repeated MetricImage p_content = 1;
 }
 
 message Empty {}
