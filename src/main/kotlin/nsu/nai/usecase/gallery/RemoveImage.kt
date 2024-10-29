@@ -37,8 +37,8 @@ class RemoveImage(
                 throw ImageInProcessException(imageRow[Images.id])
             }
 
-            Images.update({ condition }) {
-                it[status] = ImageEntity.Status.FOR_REMOVAL
+            Images.innerJoin(Galleries).update({ condition }) {
+                it[Images.status] = ImageEntity.Status.FOR_REMOVAL
             }
 
             removeEntryProducer.enqueue(RemoveEntryPayload(imageUuid.toString()))

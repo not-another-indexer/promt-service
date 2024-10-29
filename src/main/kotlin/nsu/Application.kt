@@ -1,8 +1,6 @@
 package nsu
 
-import io.github.oshai.kotlinlogging.KotlinLogging
 import io.grpc.*
-import kotlinx.coroutines.runBlocking
 import nsu.client.CloudberryStorageClient
 import nsu.nai.core.table.gallery.Galleries
 import nsu.nai.core.table.image.Images
@@ -15,10 +13,11 @@ import nsu.nai.port.MainServiceImpl
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.slf4j.LoggerFactory
 import java.sql.Connection
 import java.sql.DriverManager
 
-fun main() = runBlocking {
+fun main() {
     // DB-QUEUE
     val producers = initDbQueue()
 
@@ -37,10 +36,9 @@ fun main() = runBlocking {
         SchemaUtils.create(Users, Galleries, Images)
     }
 
-    KotlinLogging.logger { }.info { "Server started on port ${server.port}" }
+    LoggerFactory.getLogger("Server").info("Server started on port ${server.port}")
 
     server.awaitTermination()
-
 }
 
 object Config {

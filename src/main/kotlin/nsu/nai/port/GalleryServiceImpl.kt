@@ -14,24 +14,19 @@ import nsu.nai.core.Parameter
 import nsu.nai.core.table.image.Image
 import nsu.nai.core.table.image.ImageExtension
 import nsu.nai.dbqueue.Producers
-import nsu.nai.exception.EntityAlreadyExistsException
-import nsu.nai.exception.EntityNotFoundException
-import nsu.nai.exception.InvalidExtensionException
-import nsu.nai.exception.MetadataNotFoundException
+import nsu.nai.exception.*
 import nsu.nai.usecase.gallery.*
 import nsu.platform.userId
 import java.io.ByteArrayOutputStream
 import java.util.*
 
 class GalleryServiceImpl(private val producers: Producers) : GalleryServiceGrpcKt.GalleryServiceCoroutineImplBase() {
-    val logger = KotlinLogging.logger {}
+    private val logger = KotlinLogging.logger {}
 
     override suspend fun getGalleryImages(request: GetGalleryImagesRequest): GetGalleryImagesResponse {
-        return handleRequest {
-            require((request.pSize > 0) and (request.pSize < 1000)) { "size must be greater than 0 and less than 1000" }
-            require(request.pOffset >= 0) { "offset must be greater than or equal to 0" }
+        val userId = Context.current().userId
 
-            val userId = Context.current().userId
+        return handleRequest {
             val (images: List<Image>, totalSize: Long) = GetGalleryImages(
                 userId,
                 UUID.fromString(request.pGalleryUuid),
@@ -76,7 +71,7 @@ class GalleryServiceImpl(private val producers: Producers) : GalleryServiceGrpcK
             ).execute()
 
             addImageResponse {
-                pImageId = image.id.toString()
+                pImageUuid = image.id.toString()
             }
         }
     }
@@ -86,7 +81,7 @@ class GalleryServiceImpl(private val producers: Producers) : GalleryServiceGrpcK
             val userId = Context.current().userId
             RemoveImage(
                 userId,
-                UUID.fromString(request.pImageId),
+                UUID.fromString(request.pImageUuid),
                 Config.connectionProvider,
                 producers.removeEntry
             ).execute()
@@ -97,7 +92,7 @@ class GalleryServiceImpl(private val producers: Producers) : GalleryServiceGrpcK
 
     override suspend fun getImageContent(request: GetImageContentRequest): GetImageContentResponse {
         return handleRequest {
-            val imageId = request.pImageId
+            val imageId = request.pImageUuid
             val userId = Context.current().userId
 
             val imageIdentifier = UUID.fromString(imageId)
@@ -156,21 +151,21 @@ class GalleryServiceImpl(private val producers: Producers) : GalleryServiceGrpcK
         } catch (e: IllegalArgumentException) {
             logger.error(e) { "${e.message}" }
             throw Status.INVALID_ARGUMENT.withDescription(e.message).asRuntimeException()
+        } catch (e: ValidationException) {
+            logger.warn(e) { "${e.message}" }
+            throw Status.INVALID_ARGUMENT.withDescription(e.message).asRuntimeException()
         } catch (e: MetadataNotFoundException) {
-            logger.error(e) { "${e.message}" }
+            logger.warn(e) { "${e.message}" }
             throw Status.INVALID_ARGUMENT.withDescription(e.message).asRuntimeException()
         } catch (e: EntityNotFoundException) {
-            logger.error(e) { "${e.message}" }
+            logger.warn(e) { "${e.message}" }
             throw Status.NOT_FOUND.withDescription(e.message).asRuntimeException()
         } catch (e: InvalidExtensionException) {
-            logger.error(e) { "${e.message}" }
+            logger.warn(e) { "${e.message}" }
             throw Status.INVALID_ARGUMENT.withDescription(e.message).asRuntimeException()
         } catch (e: EntityAlreadyExistsException) {
-            logger.error { "${e.message}" }
+            logger.warn { "${e.message}" }
             throw Status.ALREADY_EXISTS.withDescription(e.message).asRuntimeException()
-        } catch (e: IllegalArgumentException) {
-            logger.error { "${e.message}" }
-            throw Status.INVALID_ARGUMENT.withDescription(e.message).asRuntimeException()
         } catch (exception: Throwable) {
             logger.error(exception) { "Unhandled exception" }
             throw Status.INTERNAL.withDescription("Internal server error").asRuntimeException()

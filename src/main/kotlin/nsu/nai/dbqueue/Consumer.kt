@@ -5,7 +5,6 @@ import kotlinx.coroutines.runBlocking
 import nsu.Config
 import nsu.nai.core.table.gallery.Galleries
 import nsu.nai.core.table.gallery.GalleryEntity
-import nsu.nai.core.table.image.Image
 import nsu.nai.core.table.image.ImageEntity
 import nsu.nai.core.table.image.ImageEntity.Companion.toImageEntity
 import nsu.nai.core.table.image.Images
@@ -92,13 +91,13 @@ class RemoveEntryConsumer(config: QueueConfig) : BaseConsumer<RemoveEntryPayload
 class InitIndexConsumer(config: QueueConfig) : BaseConsumer<InitIndexPayload>(config) {
     override fun execute(task: Task<InitIndexPayload>): TaskExecutionResult {
         val bucketUUID = UUID.fromString(task.payload.get().galleryUUID)
-        return runTransaction(bucketUUID) {
+        return runTransaction {
             Config.cloudberry.initBucket(bucketUUID)
             Galleries.update({ Galleries.id eq bucketUUID }) { it[status] = GalleryEntity.Status.ACTIVE }
         }
     }
 
-    private fun runTransaction(bucketUUID: UUID, action: suspend () -> Unit): TaskExecutionResult {
+    private fun runTransaction(action: suspend () -> Unit): TaskExecutionResult {
         Database.connect(Config.connectionProvider)
         return transaction {
             try {

@@ -8,6 +8,7 @@ import nai.Nai.*
 import nsu.Config
 import nsu.nai.dbqueue.Producers
 import nsu.nai.exception.EntityAlreadyExistsException
+import nsu.nai.exception.ValidationException
 import nsu.nai.usecase.main.CreateGallery
 import nsu.nai.usecase.main.Gallery
 import nsu.nai.usecase.main.GetGalleries
@@ -21,13 +22,12 @@ class MainServiceImpl(private val producers: Producers) : MainServiceGrpcKt.Main
 
     override suspend fun createGallery(request: CreateGalleryRequest): CreateGalleryResponse {
         val userId = Context.current().userId
-        return handleRequest {
-            require(!request.pGalleryName.isNullOrBlank()) { "gallery name must not be blank" }
 
+        return handleRequest {
             val gallery = CreateGallery(
                 userId,
                 request.pGalleryName,
-                getNewConnection = Config.connectionProvider,
+                Config.connectionProvider,
                 producers.initIndex
             ).execute()
 
@@ -77,10 +77,13 @@ class MainServiceImpl(private val producers: Producers) : MainServiceGrpcKt.Main
         return try {
             action()
         } catch (e: EntityAlreadyExistsException) {
-            logger.error { e.message }
+            logger.warn { e.message }
             throw Status.ALREADY_EXISTS.withDescription(e.message).asRuntimeException()
         } catch (e: IllegalArgumentException) {
             logger.error { e.message }
+            throw Status.INVALID_ARGUMENT.withDescription(e.message).asRuntimeException()
+        } catch (e: ValidationException) {
+            logger.warn { e.message }
             throw Status.INVALID_ARGUMENT.withDescription(e.message).asRuntimeException()
         } catch (exception: Throwable) {
             logger.error(exception) { "Unhandled exception" }
