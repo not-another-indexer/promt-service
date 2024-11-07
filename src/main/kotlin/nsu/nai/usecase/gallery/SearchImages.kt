@@ -71,13 +71,13 @@ class SearchImages(
             }
         } catch (e: Exception) {
             // If search fails, search by description
-            return transaction {
+            val descriptionResults = transaction {
                 Images.selectAll()
-                    .where { 
+                    .where {
                         (Images.galleryUUID eq galleryUuid) and
                         (Images.description.lowerCase() like "%${query.lowercase()}%")
                     }
-                    .limit(10)
+                    .limit(count)
                     .map { image ->
                         ImageWithMetric(
                             image = Image(
@@ -85,10 +85,31 @@ class SearchImages(
                                 galleryId = image[Images.galleryUUID],
                                 description = image[Images.description]
                             ),
-                            metrics = mapOf("description" to 1.0) // Full match for description-based results
+                            metrics = mapOf("description" to 1.0)
                         )
                     }
             }
+
+            // If no results found by description, return first N images from gallery
+            if (descriptionResults.isEmpty()) {
+                return transaction {
+                    Images.selectAll()
+                        .where { Images.galleryUUID eq galleryUuid }
+                        .limit(count)
+                        .map { image ->
+                            ImageWithMetric(
+                                image = Image(
+                                    id = image[Images.id],
+                                    galleryId = image[Images.galleryUUID],
+                                    description = image[Images.description]
+                                ),
+                                metrics = mapOf("fallback" to 0.0)
+                            )
+                        }
+                }
+            }
+
+            return descriptionResults
         }
     }
 }
