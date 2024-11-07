@@ -8,6 +8,7 @@ import nsu.nai.exception.EntityNotFoundException
 import nsu.nai.exception.ValidationException
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.not
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.sql.Connection
@@ -48,7 +49,7 @@ class GetGalleryImages(
             if (!galleryExists) throw EntityNotFoundException(iGalleryUuid)
 
             val images = Images.innerJoin(Galleries).selectAll()
-                .where { (Images.galleryUUID eq iGalleryUuid) and (Galleries.userId eq iUserId) and (Images.status eq ImageEntity.Status.ACTIVE) }
+                .where { (Images.galleryUUID eq iGalleryUuid) and (Galleries.userId eq iUserId) and not(Images.status eq ImageEntity.Status.FOR_REMOVAL) }
                 .orderBy(Images.id)
                 .limit(iSize)
                 .offset(iOffset)

@@ -2,8 +2,11 @@ package nsu.nai.usecase.main
 
 import nsu.nai.core.table.gallery.Galleries
 import nsu.nai.core.table.gallery.GalleryEntity.Companion.toGalleryEntity
+import nsu.nai.core.table.image.ImageEntity
 import nsu.nai.core.table.image.Images
 import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.not
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.sql.Connection
@@ -24,13 +27,13 @@ class GetGalleries(
 
         return transaction {
             Galleries.selectAll()
-                .where { Galleries.userId eq userId }
+                .where { Galleries.userId eq userId  }
                 .map { row -> row.toGalleryEntity() }
                 .map { Gallery(it.id, it.name) }
                 .associateWith { gallery ->
                     Images
                         .selectAll()
-                        .where { Images.galleryUUID eq gallery.id }
+                        .where { (Images.galleryUUID eq gallery.id) and not(Images.status eq ImageEntity.Status.FOR_REMOVAL) }
                         .limit(4)
                         .map { it[Images.id] }
                 }
