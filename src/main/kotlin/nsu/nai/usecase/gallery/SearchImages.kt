@@ -77,7 +77,7 @@ class SearchImages(
                         (Images.galleryUUID eq galleryUuid) and
                         (Images.description.lowerCase() like "%${query.lowercase()}%")
                     }
-                    .limit(count)
+                    .limit(count.toInt())
                     .map { image ->
                         ImageWithMetric(
                             image = Image(
@@ -95,7 +95,7 @@ class SearchImages(
                 return transaction {
                     Images.selectAll()
                         .where { Images.galleryUUID eq galleryUuid }
-                        .limit(count)
+                        .limit(count.toInt())
                         .map { image ->
                             ImageWithMetric(
                                 image = Image(
