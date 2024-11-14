@@ -9,20 +9,20 @@ fun validateCredentials(rawPassword: String, username: String): List<String> {
 
     val allowedSpecialChars = Pattern.compile("[^a-zA-Z0-9_-]")
 
-    if (username.length < 3) errors.add("Имя пользователя должно содержать не менее 3 символов")
-    if (username.length > 64) errors.add("Имя пользователя не должно превышать 64 символов")
-    if (username.isBlank()) errors.add("Имя пользователя не должно быть пустым")
+    if (username.length < 3) errors.add("Username must be at least 3 characters long")
+    if (username.length > 64) errors.add("Username must not exceed 64 characters")
+    if (username.isBlank()) errors.add("Username must not be empty")
     if (allowedSpecialChars.matcher(username).find()) {
-        errors.add("Имя пользователя может содержать только буквы, цифры, '-', или '_'")
+        errors.add("Username can only contain letters, numbers, '-', or '_'")
     }
-    if (rawPassword.length < 8) errors.add("Пароль должен содержать не менее 8 символов")
-    if (rawPassword.length > 128) errors.add("Пароль не должен превышать 128 символов")
-    if (rawPassword.isBlank()) errors.add("Пароль не должен быть пустым")
-    if (rawPassword.contains(" ")) errors.add("Пароль не должен содержать пробелы")
-    if (!rawPassword.any { it.isDigit() }) errors.add("Пароль должен содержать хотя бы 1 цифру")
-    if (!rawPassword.any { it.isUpperCase() }) errors.add("Пароль должен содержать хотя бы 1 заглавную букву")
-    if (!rawPassword.any { it.isLowerCase() }) errors.add("Пароль должен содержать хотя бы 1 строчную букву")
-    if (!SPECIAL_CHARS.matcher(rawPassword).find()) errors.add("Пароль должен содержать хотя бы 1 специальный символ $ # % &")
+    if (rawPassword.length < 8) errors.add("Password must be at least 8 characters long")
+    if (rawPassword.length > 128) errors.add("Password must not exceed 128 characters")
+    if (rawPassword.isBlank()) errors.add("Password must not be empty")
+    if (rawPassword.contains(" ")) errors.add("Password must not contain spaces")
+    if (!rawPassword.any { it.isDigit() }) errors.add("Password must contain at least 1 digit")
+    if (!rawPassword.any { it.isUpperCase() }) errors.add("Password must contain at least 1 uppercase letter")
+    if (!rawPassword.any { it.isLowerCase() }) errors.add("Password must contain at least 1 lowercase letter")
+    if (!SPECIAL_CHARS.matcher(rawPassword).find()) errors.add("Password must contain at least 1 special character from $ # % &")
 
     return errors
 }
