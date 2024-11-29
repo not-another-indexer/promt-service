@@ -46,8 +46,8 @@ object Config {
     val dbUser = System.getenv("DB_USER") ?: "nai_user"
     val dbPassword = System.getenv("DB_PASSWORD") ?: "nai_password"
     val grpcPort = System.getenv("GRPC_PORT")?.toInt() ?: 8080
-    private val cloudberryHost = System.getenv("CLOUDBERRY_HOST") ?: "localhost"
-    private val cloudberryPort = System.getenv("CLOUDBERRY_PORT")?.toInt() ?: 50051
+    private val cloudberryHost = System.getenv("CLOUDBERRY_HOST") ?: "176.123.160.174"
+    private val cloudberryPort = System.getenv("CLOUDBERRY_PORT")?.toInt() ?: 8002
 
     val connectionProvider: () -> Connection = {
         DriverManager.getConnection(dbUrl, dbUser, dbPassword)

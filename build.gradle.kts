@@ -6,6 +6,7 @@ plugins {
     kotlin("jvm") version "2.0.20"
     kotlin("plugin.serialization") version "1.4.21"
     id("com.google.protobuf") version "0.9.2"
+    id ("com.github.johnrengelman.shadow") version "7.1.0"
 }
 
 group = "nsu"
@@ -99,6 +100,14 @@ protobuf {
 }
 
 tasks {
+    shadowJar {
+        mergeServiceFiles()
+        manifest {
+            attributes(
+                "Main-Class" to "nsu.ApplicationKt"
+            )
+        }
+    }
     processResources {
         dependsOn("generateProto")
     }
@@ -111,5 +120,3 @@ tasks {
         useJUnitPlatform()
     }
 }
-
-
