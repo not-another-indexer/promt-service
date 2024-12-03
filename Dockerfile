@@ -9,7 +9,7 @@ COPY . .
 
 RUN chmod +x gradlew
 
-RUN ./gradlew build --no-daemon
+RUN ./gradlew shadowJar
 
 FROM openjdk:21-jdk-slim
 
