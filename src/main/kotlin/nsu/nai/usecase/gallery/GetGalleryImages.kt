@@ -2,6 +2,7 @@ package nsu.nai.usecase.gallery
 
 import nsu.nai.core.table.gallery.Galleries
 import nsu.nai.core.table.image.Image
+import nsu.nai.core.table.image.ImageEntity
 import nsu.nai.core.table.image.Images
 import nsu.nai.exception.EntityNotFoundException
 import nsu.nai.exception.ValidationException
@@ -47,7 +48,7 @@ class GetGalleryImages(
             if (!galleryExists) throw EntityNotFoundException(iGalleryUuid)
 
             val images = Images.innerJoin(Galleries).selectAll()
-                .where { (Images.galleryUUID eq iGalleryUuid) and (Galleries.userId eq iUserId) }
+                .where { (Images.galleryUUID eq iGalleryUuid) and (Galleries.userId eq iUserId) and (Images.status eq ImageEntity.Status.ACTIVE) }
                 .orderBy(Images.id)
                 .limit(iSize)
                 .offset(iOffset)
