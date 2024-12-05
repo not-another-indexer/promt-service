@@ -40,32 +40,54 @@ class SearchImages(
             }
         }
 
-        val response = cloudberry.find(
-            query = query,
-            bucketUUID = galleryUuid,
-            parameters = parameters,
-            count = count
-        )
+        try {
+            val response = cloudberry.find(
+                query = query,
+                bucketUUID = galleryUuid,
+                parameters = parameters,
+                count = count
+            )
 
-        val imagesWithMetric = response.pEntriesList.associate { entry ->
-            UUID.fromString(entry.pContentUuid) to entry.pMetricsList.associate { metric ->
-                metric.pParameter.name to metric.pValue
-            }
-        }
-
-        return transaction {
-            Images.selectAll()
-                .where { Images.id inList imagesWithMetric.keys }
-                .map { image ->
-                    ImageWithMetric(
-                        image = Image(
-                            id = image[Images.id],
-                            galleryId = image[Images.galleryUUID],
-                            description = image[Images.description]
-                        ),
-                        metrics = imagesWithMetric[image[Images.id]] ?: emptyMap()
-                    )
+            val imagesWithMetric = response.pEntriesList.associate { entry ->
+                UUID.fromString(entry.pContentUuid) to entry.pMetricsList.associate { metric ->
+                    metric.pParameter.name to metric.pValue
                 }
+            }
+
+            return transaction {
+                Images.selectAll()
+                    .where { Images.id inList imagesWithMetric.keys }
+                    .map { image ->
+                        ImageWithMetric(
+                            image = Image(
+                                id = image[Images.id],
+                                galleryId = image[Images.galleryUUID],
+                                description = image[Images.description]
+                            ),
+                            metrics = imagesWithMetric[image[Images.id]] ?: emptyMap()
+                        )
+                    }
+            }
+        } catch (e: Exception) {
+            // If search fails, search by description
+            return transaction {
+                Images.selectAll()
+                    .where { 
+                        (Images.galleryUUID eq galleryUuid) and
+                        (Images.description.lowerCase() like "%${query.lowercase()}%")
+                    }
+                    .limit(10)
+                    .map { image ->
+                        ImageWithMetric(
+                            image = Image(
+                                id = image[Images.id],
+                                galleryId = image[Images.galleryUUID],
+                                description = image[Images.description]
+                            ),
+                            metrics = mapOf("description" to 1.0) // Full match for description-based results
+                        )
+                    }
+            }
         }
     }
 }
