@@ -21,6 +21,9 @@ services:
   prompt-service:
     build:
       context: ./prompt-service
+    environment:
+      CLOUDBERRY_HOST: 176.123.160.174
+      CLOUDBERRY_PORT: 8002
     depends_on:
       - postgres
       - cloudberry-storage

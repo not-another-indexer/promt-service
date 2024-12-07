@@ -18,12 +18,24 @@ services:
     depends_on:
       - postgres
 
+  front:
+     build:
+       context: ./nai-frontend
+     # restart: always
+     depends_on:
+       - prompt-service
+     ports:
+       - "5173:5173"
+
   prompt-service:
     build:
-      dockerfile: ./prompt-service
+      context: ./prompt-service
     environment:
       CLOUDBERRY_HOST: 176.123.160.174
       CLOUDBERRY_PORT: 8002
+      DB_URL: jdbc:postgresql://postgres:5432/nai_db
+      DB_USER: nai_user
+      DB_PASSWORD: nai_password
     depends_on:
       - postgres
       - cloudberry-storage
