@@ -4,11 +4,13 @@ import nsu.client.CloudberryStorageClient
 import nsu.nai.core.Parameter
 import nsu.nai.core.table.gallery.Galleries
 import nsu.nai.core.table.image.Image
+import nsu.nai.core.table.image.ImageEntity
 import nsu.nai.core.table.image.Images
 import nsu.nai.exception.EntityNotFoundException
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.lowerCase
+import org.jetbrains.exposed.sql.not
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.sql.Connection
@@ -75,7 +77,7 @@ class SearchImages(
                 Images.selectAll()
                     .where {
                         (Images.galleryUUID eq galleryUuid) and
-                        (Images.description.lowerCase() like "%${query.lowercase()}%")
+                        (Images.description.lowerCase() like "%${query.lowercase()}%") and not(Images.status eq ImageEntity.Status.FOR_REMOVAL)
                     }
                     .limit(count.toInt())
                     .map { image ->

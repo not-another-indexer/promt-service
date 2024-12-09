@@ -7,6 +7,9 @@ import nsu.nai.core.table.image.Images
 import nsu.nai.exception.EntityNotFoundException
 import nsu.nai.exception.ValidationException
 import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.SqlLogger
+import org.jetbrains.exposed.sql.StdOutSqlLogger
+import org.jetbrains.exposed.sql.addLogger
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.not
 import org.jetbrains.exposed.sql.selectAll
@@ -41,6 +44,7 @@ class GetGalleryImages(
         Database.connect(getNewConnection)
 
         return transaction {
+            addLogger(StdOutSqlLogger)
             val galleryExists = Galleries
                 .selectAll()
                 .where { (Galleries.userId eq iUserId) and (Galleries.id eq iGalleryUuid) }
