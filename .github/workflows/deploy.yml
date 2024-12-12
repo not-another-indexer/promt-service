@@ -1,0 +1,32 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Set up SSH Agent
+    - name: Set up SSH
+      uses: webfactory/ssh-agent@v0.7.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    # Clone repository on server
+    - name: Clone Repository on Server
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} "
+          if [ ! -d /not-another-indexer/promt-service ]; then
+            git clone https://github.com/your-username/your-repo.git /not-another-indexer/promt-service
+          else
+            cd /not-another-indexer/promt-service && git pull
+          fi
+        "
+
+    # Run the start script
+    - name: Run Start Script
+      run: ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} "cd /not-another-indexer/promt-service/deploy && ./start.sh"
