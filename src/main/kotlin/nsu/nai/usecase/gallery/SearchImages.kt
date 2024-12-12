@@ -69,7 +69,7 @@
                                 ),
                                 metrics = imagesWithMetric[image[Images.id]] ?: emptyMap()
                             )
-                        }
+                        }.sortedByDescending { it.metrics.values.sum() }
                 }
             } catch (e: Exception) {
                 // If search fails, search by description
@@ -89,7 +89,7 @@
                                 ),
                                 metrics = mapOf("description" to 1.0)
                             )
-                        }.sortedBy { it.metrics.values.sum() }
+                        }.sortedByDescending { it.metrics.values.sum() }
                 }
 
                 // If no results found by description, return first N images from gallery
